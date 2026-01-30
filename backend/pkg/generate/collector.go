@@ -145,6 +145,10 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 		return nil, errors.New("docs file path is required")
 	}
 
+	if opts.OpenAPISpecOutputPath == "" {
+		return nil, errors.New("OpenAPI spec file path is required")
+	}
+
 	// Normalize path to be recognized as a local package
 	goTypesDirPath := normalizeLocalPackagePath(opts.GoTypesDirPath)
 
@@ -159,7 +163,7 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 		typeASTs:          make(map[string]*ast.GenDecl),
 		constASTs:         make(map[string]*ast.GenDecl),
 		externalTypeFormats: map[string]string{
-			"time.Time":                         FormatDateTime,
+			"time.Time": FormatDateTime,
 			"http-mqtt-boilerplate/backend/pkg/types.URL": FormatURI,
 		},
 		docsFilePath:        opts.DocsFileOutputPath,
