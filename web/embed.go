@@ -16,7 +16,7 @@ type Router interface {
 	Mount(pattern string, handler http.Handler)
 }
 
-func DocsApp() (WebApp, error) { return NewWebApp("docs", docsFS, "docs/dist", "/docs/") }
+func DocsApp() (*WebApp, error) { return NewWebApp("docs", docsFS, "docs/dist", "/docs/") }
 
 type WebApp struct {
 	name    string
@@ -25,10 +25,10 @@ type WebApp struct {
 	urlBase string
 }
 
-func NewWebApp(name string, app fs.FS, subDir string, urlBase string) (WebApp, error) {
+func NewWebApp(name string, app fs.FS, subDir string, urlBase string) (*WebApp, error) {
 	subFS, err := fs.Sub(app, subDir)
 	if err != nil {
-		return WebApp{}, err
+		return nil, err
 	}
 
 	// Ensure urlBase starts with / and ends with /
@@ -36,7 +36,7 @@ func NewWebApp(name string, app fs.FS, subDir string, urlBase string) (WebApp, e
 	urlBase = strings.TrimPrefix(urlBase, "/")
 	urlBase = "/" + urlBase + "/"
 
-	return WebApp{
+	return &WebApp{
 		name:    name,
 		fs:      subFS,
 		urlBase: urlBase,
@@ -44,7 +44,7 @@ func NewWebApp(name string, app fs.FS, subDir string, urlBase string) (WebApp, e
 	}, nil
 }
 
-func (wa WebApp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (wa *WebApp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/")
 	if path == "" {
 		path = "index.html"
@@ -71,17 +71,17 @@ func (wa WebApp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-func (wa WebApp) URLBase() string {
+func (wa *WebApp) URLBase() string {
 	return wa.urlBase
 }
 
 // Handler returns an http.Handler that serves the WebApp at the given path.
-func (wa WebApp) Handler(path string) http.Handler {
+func (wa *WebApp) Handler(path string) http.Handler {
 	return http.StripPrefix(path, wa)
 }
 
 // Register registers the WebApp with the given ServeMux.
-func (wa WebApp) Register(mux Router, l *slog.Logger) {
+func (wa *WebApp) Register(mux Router, l *slog.Logger) {
 	wa.l = l.With(slog.String("app", wa.name), slog.String("urlBase", wa.urlBase), slog.String("component", "file-server"))
 	wa.l.Info("Registering web app")
 
