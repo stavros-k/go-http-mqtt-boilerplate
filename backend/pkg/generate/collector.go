@@ -373,6 +373,11 @@ func (g *OpenAPICollector) RegisterJSONRepresentation(value any) error {
 }
 
 func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
+	// Validate operationID format
+	if err := validateOperationIDFormat(route.OperationID); err != nil {
+		return err
+	}
+
 	// Validate operationID is unique
 	if _, exists := g.httpOps[route.OperationID]; exists {
 		return fmt.Errorf("duplicate operationID: %s", route.OperationID)
@@ -425,6 +430,11 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 }
 
 func (g *OpenAPICollector) RegisterMQTTPublication(pub *MQTTPublicationInfo) error {
+	// Validate operationID format
+	if err := validateOperationIDFormat(pub.OperationID); err != nil {
+		return err
+	}
+
 	// Validate operationID is unique
 	if err := g.validateUniqueOperationID(pub.OperationID); err != nil {
 		return err
@@ -455,6 +465,11 @@ func (g *OpenAPICollector) RegisterMQTTPublication(pub *MQTTPublicationInfo) err
 }
 
 func (g *OpenAPICollector) RegisterMQTTSubscription(sub *MQTTSubscriptionInfo) error {
+	// Validate operationID format
+	if err := validateOperationIDFormat(sub.OperationID); err != nil {
+		return err
+	}
+
 	// Validate operationID is unique
 	if err := g.validateUniqueOperationID(sub.OperationID); err != nil {
 		return err
@@ -581,6 +596,19 @@ func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
 		if err := g.RegisterJSONRepresentation(ex); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// validateOperationIDFormat checks that an operationID contains only characters a-z, A-Z.
+func validateOperationIDFormat(operationID string) error {
+	if operationID == "" {
+		return errors.New("operationID cannot be empty")
+	}
+
+	if !IsASCIILetterString(operationID) {
+		return fmt.Errorf("operationID %q contains invalid characters (only characters a-z, A-Z are allowed)", operationID)
 	}
 
 	return nil

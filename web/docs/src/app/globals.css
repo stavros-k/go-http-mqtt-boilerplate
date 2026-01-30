@@ -1,0 +1,543 @@
+@import "tailwindcss";
+
+* {
+    scrollbar-width: none;
+}
+
+/* Animations */
+@keyframes slideDownFadeIn {
+    0% {
+        max-height: 0;
+        opacity: 0;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    60% {
+        max-height: 1000px;
+        opacity: 0;
+        margin-bottom: 1rem;
+    }
+    100% {
+        max-height: 1000px;
+        opacity: 1;
+        margin-bottom: 1rem;
+    }
+}
+
+.animate-slide-down-fade-in {
+    animation: slideDownFadeIn 0.4s ease-out;
+    overflow: hidden;
+}
+
+/* Set color-scheme based on data-theme attribute */
+:root,
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+html[data-theme="light"] {
+    color-scheme: light;
+}
+
+@theme {
+    /* Backgrounds - light-dark(light, dark) */
+    --color-bg-primary: light-dark(#f8fafc, #0f172a);
+    --color-bg-secondary: light-dark(#ffffff, #1e293b);
+    --color-bg-tertiary: light-dark(#f1f5f9, #334155);
+    --color-bg-sidebar: light-dark(#e2e8f0, #020617);
+    --color-bg-hover: light-dark(#cbd5e1, #475569);
+
+    /* Borders */
+    --color-border-primary: light-dark(#cbd5e1, #334155);
+    --color-border-secondary: light-dark(#94a3b8, #475569);
+    --color-border-sidebar: light-dark(#cbd5e1, #1e293b);
+
+    /* Text */
+    --color-text-primary: light-dark(#0f172a, #f8fafc);
+    --color-text-secondary: light-dark(#1e293b, #e2e8f0);
+    --color-text-tertiary: light-dark(#334155, #cbd5e1);
+    --color-text-muted: light-dark(#64748b, #94a3b8);
+    --color-text-dim: light-dark(#94a3b8, #64748b);
+
+    /* Accent Blue */
+    --color-accent-blue: #2563eb;
+    --color-accent-blue-hover: light-dark(#1d4ed8, #60a5fa);
+    --color-accent-blue-light: light-dark(#3b82f6, #93c5fd);
+    --color-accent-blue-bg: light-dark(#dbeafe, #1e3a8a);
+    --color-accent-blue-text: light-dark(#1e40af, #93c5fd);
+    --color-accent-blue-border: light-dark(#2563eb, #3b82f6);
+
+    /* Accent Green */
+    --color-accent-green: #16a34a;
+    --color-accent-green-hover: light-dark(#15803d, #4ade80);
+    --color-accent-green-light: light-dark(#22c55e, #86efac);
+    --color-accent-green-bg: light-dark(#dcfce7, #14532d);
+    --color-accent-green-text: light-dark(#166534, #86efac);
+    --color-accent-green-border: light-dark(#16a34a, #22c55e);
+
+    /* Accent Purple */
+    --color-accent-purple: #7c3aed;
+    --color-accent-purple-hover: light-dark(#6d28d9, #a78bfa);
+    --color-accent-purple-light: light-dark(#8b5cf6, #c084fc);
+    --color-accent-purple-bg: light-dark(#f3e8ff, #581c87);
+    --color-accent-purple-text: light-dark(#6d28d9, #c084fc);
+    --color-accent-purple-border: light-dark(#7c3aed, #8b5cf6);
+
+    /* Success */
+    --color-success-bg: light-dark(#dcfce7, #14532d);
+    --color-success-text: light-dark(#166534, #86efac);
+    --color-success-border: light-dark(#22c55e, #15803d);
+
+    /* Error */
+    --color-error-bg: light-dark(#fee2e2, #7f1d1d);
+    --color-error-text: light-dark(#991b1b, #fca5a5);
+    --color-error-border: light-dark(#ef4444, #b91c1c);
+    --color-error-accent: light-dark(#dc2626, #f87171);
+
+    /* Warning */
+    --color-warning-bg: light-dark(#fef3c7, #78350f);
+    --color-warning-text: light-dark(#92400e, #fcd34d);
+    --color-warning-border: light-dark(#f59e0b, #d97706);
+
+    /* Info */
+    --color-info-bg: light-dark(#e0e7ff, #312e81);
+    --color-info-text: light-dark(#3730a3, #a5b4fc);
+    --color-info-border: light-dark(#6366f1, #4338ca);
+
+    /* Tag Blue */
+    --color-tag-blue-bg: light-dark(#dbeafe, #1e3a8a);
+    --color-tag-blue-text: light-dark(#1e40af, #93c5fd);
+    --color-tag-blue-border: light-dark(#3b82f6, #1d4ed8);
+
+    /* Tag Teal */
+    --color-tag-teal-bg: light-dark(#ccfbf1, #134e4a);
+    --color-tag-teal-text: light-dark(#0f766e, #5eead4);
+    --color-tag-teal-border: light-dark(#14b8a6, #0d9488);
+
+    /* Protocol Colors */
+    --color-protocol-http: #16a34a;
+    --color-protocol-ws: #0891b2;
+
+    /* Language/Icon Colors */
+    --color-lang-json: light-dark(#f59e0b, #fbbf24);
+    --color-lang-ts: #3178c6;
+    --color-lang-go: #00add8;
+    --color-lang-overview: light-dark(#3b82f6, #60a5fa);
+    --color-lang-references: #10b981;
+
+    /* Type System - Enum */
+    --color-type-enum: light-dark(#7c3aed, #c084fc);
+    --color-type-enum-bg: light-dark(#f3e8ff, #581c87);
+    --color-type-enum-border: light-dark(#9333ea, #7c3aed);
+
+    /* Type System - Object */
+    --color-type-object: light-dark(#1d4ed8, #60a5fa);
+    --color-type-object-bg: light-dark(#dbeafe, #1e3a8a);
+    --color-type-object-border: light-dark(#2563eb, #3b82f6);
+
+    /* Type System - Alias */
+    --color-type-alias: light-dark(#15803d, #4ade80);
+    --color-type-alias-bg: light-dark(#dcfce7, #14532d);
+    --color-type-alias-border: light-dark(#16a34a, #22c55e);
+
+    /* Type System - Map */
+    --color-type-map: light-dark(#c2410c, #fb923c);
+    --color-type-map-bg: light-dark(#ffedd5, #7c2d12);
+    --color-type-map-border: light-dark(#ea580c, #f97316);
+
+    /* Type System - Other */
+    --color-type-primitive: light-dark(#15803d, #4ade80);
+    --color-type-reference: light-dark(#1d4ed8, #60a5fa);
+    --color-type-reference-hover: light-dark(#1e40af, #93c5fd);
+    --color-type-field-name: light-dark(#0e7490, #22d3ee);
+
+    /* Gradients */
+    --color-gradient-start: light-dark(#3b82f6, #1e3a8a);
+    --color-gradient-mid: light-dark(#6366f1, #1e40af);
+    --color-gradient-end: light-dark(#8b5cf6, #2563eb);
+
+    /* Shadows */
+    --color-shadow-sm: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.5));
+    --color-shadow-md: light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.6));
+    --color-shadow-lg: light-dark(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.7));
+
+    /* Deprecated */
+    --opacity-deprecated: 0.7;
+    --opacity-deprecated-hover: 0.85;
+}
+
+/* Shiki Code Block Styles */
+.shiki {
+    overflow-x: auto;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 2px solid var(--color-border-primary);
+}
+
+.shiki code {
+    display: block;
+    width: fit-content;
+    min-width: 100%;
+}
+
+/* Shiki Colors - based on code theme */
+
+html[data-code-theme="light"] .shiki,
+html[data-code-theme="light"] .shiki span {
+    color: var(--shiki-light);
+    background-color: var(--shiki-light-bg);
+}
+
+html[data-code-theme="dark"] .shiki,
+html[data-code-theme="dark"] .shiki span {
+    color: var(--shiki-dark);
+    background-color: var(--shiki-dark-bg);
+}
+
+html[data-code-theme="andromeeda"] .shiki,
+html[data-code-theme="andromeeda"] .shiki span {
+    color: var(--shiki-andromeeda);
+    background-color: var(--shiki-andromeeda-bg);
+}
+
+html[data-code-theme="aurora-x"] .shiki,
+html[data-code-theme="aurora-x"] .shiki span {
+    color: var(--shiki-aurora-x);
+    background-color: var(--shiki-aurora-x-bg);
+}
+
+html[data-code-theme="ayu-dark"] .shiki,
+html[data-code-theme="ayu-dark"] .shiki span {
+    color: var(--shiki-ayu-dark);
+    background-color: var(--shiki-ayu-dark-bg);
+}
+
+html[data-code-theme="catppuccin-frappe"] .shiki,
+html[data-code-theme="catppuccin-frappe"] .shiki span {
+    color: var(--shiki-catppuccin-frappe);
+    background-color: var(--shiki-catppuccin-frappe-bg);
+}
+
+html[data-code-theme="catppuccin-latte"] .shiki,
+html[data-code-theme="catppuccin-latte"] .shiki span {
+    color: var(--shiki-catppuccin-latte);
+    background-color: var(--shiki-catppuccin-latte-bg);
+}
+
+html[data-code-theme="catppuccin-macchiato"] .shiki,
+html[data-code-theme="catppuccin-macchiato"] .shiki span {
+    color: var(--shiki-catppuccin-macchiato);
+    background-color: var(--shiki-catppuccin-macchiato-bg);
+}
+
+html[data-code-theme="catppuccin-mocha"] .shiki,
+html[data-code-theme="catppuccin-mocha"] .shiki span {
+    color: var(--shiki-catppuccin-mocha);
+    background-color: var(--shiki-catppuccin-mocha-bg);
+}
+
+html[data-code-theme="dark-plus"] .shiki,
+html[data-code-theme="dark-plus"] .shiki span {
+    color: var(--shiki-dark-plus);
+    background-color: var(--shiki-dark-plus-bg);
+}
+
+html[data-code-theme="dracula"] .shiki,
+html[data-code-theme="dracula"] .shiki span {
+    color: var(--shiki-dracula);
+    background-color: var(--shiki-dracula-bg);
+}
+
+html[data-code-theme="dracula-soft"] .shiki,
+html[data-code-theme="dracula-soft"] .shiki span {
+    color: var(--shiki-dracula-soft);
+    background-color: var(--shiki-dracula-soft-bg);
+}
+
+html[data-code-theme="everforest-dark"] .shiki,
+html[data-code-theme="everforest-dark"] .shiki span {
+    color: var(--shiki-everforest-dark);
+    background-color: var(--shiki-everforest-dark-bg);
+}
+
+html[data-code-theme="everforest-light"] .shiki,
+html[data-code-theme="everforest-light"] .shiki span {
+    color: var(--shiki-everforest-light);
+    background-color: var(--shiki-everforest-light-bg);
+}
+
+html[data-code-theme="github-dark"] .shiki,
+html[data-code-theme="github-dark"] .shiki span {
+    color: var(--shiki-github-dark);
+    background-color: var(--shiki-github-dark-bg);
+}
+
+html[data-code-theme="github-dark-default"] .shiki,
+html[data-code-theme="github-dark-default"] .shiki span {
+    color: var(--shiki-github-dark-default);
+    background-color: var(--shiki-github-dark-default-bg);
+}
+
+html[data-code-theme="github-dark-dimmed"] .shiki,
+html[data-code-theme="github-dark-dimmed"] .shiki span {
+    color: var(--shiki-github-dark-dimmed);
+    background-color: var(--shiki-github-dark-dimmed-bg);
+}
+
+html[data-code-theme="github-dark-high-contrast"] .shiki,
+html[data-code-theme="github-dark-high-contrast"] .shiki span {
+    color: var(--shiki-github-dark-high-contrast);
+    background-color: var(--shiki-github-dark-high-contrast-bg);
+}
+
+html[data-code-theme="github-light"] .shiki,
+html[data-code-theme="github-light"] .shiki span {
+    color: var(--shiki-github-light);
+    background-color: var(--shiki-github-light-bg);
+}
+
+html[data-code-theme="github-light-default"] .shiki,
+html[data-code-theme="github-light-default"] .shiki span {
+    color: var(--shiki-github-light-default);
+    background-color: var(--shiki-github-light-default-bg);
+}
+
+html[data-code-theme="github-light-high-contrast"] .shiki,
+html[data-code-theme="github-light-high-contrast"] .shiki span {
+    color: var(--shiki-github-light-high-contrast);
+    background-color: var(--shiki-github-light-high-contrast-bg);
+}
+
+html[data-code-theme="gruvbox-dark-hard"] .shiki,
+html[data-code-theme="gruvbox-dark-hard"] .shiki span {
+    color: var(--shiki-gruvbox-dark-hard);
+    background-color: var(--shiki-gruvbox-dark-hard-bg);
+}
+
+html[data-code-theme="gruvbox-dark-medium"] .shiki,
+html[data-code-theme="gruvbox-dark-medium"] .shiki span {
+    color: var(--shiki-gruvbox-dark-medium);
+    background-color: var(--shiki-gruvbox-dark-medium-bg);
+}
+
+html[data-code-theme="gruvbox-dark-soft"] .shiki,
+html[data-code-theme="gruvbox-dark-soft"] .shiki span {
+    color: var(--shiki-gruvbox-dark-soft);
+    background-color: var(--shiki-gruvbox-dark-soft-bg);
+}
+
+html[data-code-theme="gruvbox-light-hard"] .shiki,
+html[data-code-theme="gruvbox-light-hard"] .shiki span {
+    color: var(--shiki-gruvbox-light-hard);
+    background-color: var(--shiki-gruvbox-light-hard-bg);
+}
+
+html[data-code-theme="gruvbox-light-medium"] .shiki,
+html[data-code-theme="gruvbox-light-medium"] .shiki span {
+    color: var(--shiki-gruvbox-light-medium);
+    background-color: var(--shiki-gruvbox-light-medium-bg);
+}
+
+html[data-code-theme="gruvbox-light-soft"] .shiki,
+html[data-code-theme="gruvbox-light-soft"] .shiki span {
+    color: var(--shiki-gruvbox-light-soft);
+    background-color: var(--shiki-gruvbox-light-soft-bg);
+}
+
+html[data-code-theme="houston"] .shiki,
+html[data-code-theme="houston"] .shiki span {
+    color: var(--shiki-houston);
+    background-color: var(--shiki-houston-bg);
+}
+
+html[data-code-theme="kanagawa-dragon"] .shiki,
+html[data-code-theme="kanagawa-dragon"] .shiki span {
+    color: var(--shiki-kanagawa-dragon);
+    background-color: var(--shiki-kanagawa-dragon-bg);
+}
+
+html[data-code-theme="kanagawa-lotus"] .shiki,
+html[data-code-theme="kanagawa-lotus"] .shiki span {
+    color: var(--shiki-kanagawa-lotus);
+    background-color: var(--shiki-kanagawa-lotus-bg);
+}
+
+html[data-code-theme="kanagawa-wave"] .shiki,
+html[data-code-theme="kanagawa-wave"] .shiki span {
+    color: var(--shiki-kanagawa-wave);
+    background-color: var(--shiki-kanagawa-wave-bg);
+}
+
+html[data-code-theme="laserwave"] .shiki,
+html[data-code-theme="laserwave"] .shiki span {
+    color: var(--shiki-laserwave);
+    background-color: var(--shiki-laserwave-bg);
+}
+
+html[data-code-theme="light-plus"] .shiki,
+html[data-code-theme="light-plus"] .shiki span {
+    color: var(--shiki-light-plus);
+    background-color: var(--shiki-light-plus-bg);
+}
+
+html[data-code-theme="material-theme"] .shiki,
+html[data-code-theme="material-theme"] .shiki span {
+    color: var(--shiki-material-theme);
+    background-color: var(--shiki-material-theme-bg);
+}
+
+html[data-code-theme="material-theme-darker"] .shiki,
+html[data-code-theme="material-theme-darker"] .shiki span {
+    color: var(--shiki-material-theme-darker);
+    background-color: var(--shiki-material-theme-darker-bg);
+}
+
+html[data-code-theme="material-theme-lighter"] .shiki,
+html[data-code-theme="material-theme-lighter"] .shiki span {
+    color: var(--shiki-material-theme-lighter);
+    background-color: var(--shiki-material-theme-lighter-bg);
+}
+
+html[data-code-theme="material-theme-ocean"] .shiki,
+html[data-code-theme="material-theme-ocean"] .shiki span {
+    color: var(--shiki-material-theme-ocean);
+    background-color: var(--shiki-material-theme-ocean-bg);
+}
+
+html[data-code-theme="material-theme-palenight"] .shiki,
+html[data-code-theme="material-theme-palenight"] .shiki span {
+    color: var(--shiki-material-theme-palenight);
+    background-color: var(--shiki-material-theme-palenight-bg);
+}
+
+html[data-code-theme="min-dark"] .shiki,
+html[data-code-theme="min-dark"] .shiki span {
+    color: var(--shiki-min-dark);
+    background-color: var(--shiki-min-dark-bg);
+}
+
+html[data-code-theme="min-light"] .shiki,
+html[data-code-theme="min-light"] .shiki span {
+    color: var(--shiki-min-light);
+    background-color: var(--shiki-min-light-bg);
+}
+
+html[data-code-theme="monokai"] .shiki,
+html[data-code-theme="monokai"] .shiki span {
+    color: var(--shiki-monokai);
+    background-color: var(--shiki-monokai-bg);
+}
+
+html[data-code-theme="night-owl"] .shiki,
+html[data-code-theme="night-owl"] .shiki span {
+    color: var(--shiki-night-owl);
+    background-color: var(--shiki-night-owl-bg);
+}
+
+html[data-code-theme="nord"] .shiki,
+html[data-code-theme="nord"] .shiki span {
+    color: var(--shiki-nord);
+    background-color: var(--shiki-nord-bg);
+}
+
+html[data-code-theme="plastic"] .shiki,
+html[data-code-theme="plastic"] .shiki span {
+    color: var(--shiki-plastic);
+    background-color: var(--shiki-plastic-bg);
+}
+
+html[data-code-theme="poimandres"] .shiki,
+html[data-code-theme="poimandres"] .shiki span {
+    color: var(--shiki-poimandres);
+    background-color: var(--shiki-poimandres-bg);
+}
+
+html[data-code-theme="red"] .shiki,
+html[data-code-theme="red"] .shiki span {
+    color: var(--shiki-red);
+    background-color: var(--shiki-red-bg);
+}
+
+html[data-code-theme="rose-pine"] .shiki,
+html[data-code-theme="rose-pine"] .shiki span {
+    color: var(--shiki-rose-pine);
+    background-color: var(--shiki-rose-pine-bg);
+}
+
+html[data-code-theme="rose-pine-dawn"] .shiki,
+html[data-code-theme="rose-pine-dawn"] .shiki span {
+    color: var(--shiki-rose-pine-dawn);
+    background-color: var(--shiki-rose-pine-dawn-bg);
+}
+
+html[data-code-theme="rose-pine-moon"] .shiki,
+html[data-code-theme="rose-pine-moon"] .shiki span {
+    color: var(--shiki-rose-pine-moon);
+    background-color: var(--shiki-rose-pine-moon-bg);
+}
+
+html[data-code-theme="slack-dark"] .shiki,
+html[data-code-theme="slack-dark"] .shiki span {
+    color: var(--shiki-slack-dark);
+    background-color: var(--shiki-slack-dark-bg);
+}
+
+html[data-code-theme="slack-ochin"] .shiki,
+html[data-code-theme="slack-ochin"] .shiki span {
+    color: var(--shiki-slack-ochin);
+    background-color: var(--shiki-slack-ochin-bg);
+}
+
+html[data-code-theme="snazzy-light"] .shiki,
+html[data-code-theme="snazzy-light"] .shiki span {
+    color: var(--shiki-snazzy-light);
+    background-color: var(--shiki-snazzy-light-bg);
+}
+
+html[data-code-theme="solarized-dark"] .shiki,
+html[data-code-theme="solarized-dark"] .shiki span {
+    color: var(--shiki-solarized-dark);
+    background-color: var(--shiki-solarized-dark-bg);
+}
+
+html[data-code-theme="solarized-light"] .shiki,
+html[data-code-theme="solarized-light"] .shiki span {
+    color: var(--shiki-solarized-light);
+    background-color: var(--shiki-solarized-light-bg);
+}
+
+html[data-code-theme="synthwave-84"] .shiki,
+html[data-code-theme="synthwave-84"] .shiki span {
+    color: var(--shiki-synthwave-84);
+    background-color: var(--shiki-synthwave-84-bg);
+}
+
+html[data-code-theme="tokyo-night"] .shiki,
+html[data-code-theme="tokyo-night"] .shiki span {
+    color: var(--shiki-tokyo-night);
+    background-color: var(--shiki-tokyo-night-bg);
+}
+
+html[data-code-theme="vesper"] .shiki,
+html[data-code-theme="vesper"] .shiki span {
+    color: var(--shiki-vesper);
+    background-color: var(--shiki-vesper-bg);
+}
+
+html[data-code-theme="vitesse-black"] .shiki,
+html[data-code-theme="vitesse-black"] .shiki span {
+    color: var(--shiki-vitesse-black);
+    background-color: var(--shiki-vitesse-black-bg);
+}
+
+html[data-code-theme="vitesse-dark"] .shiki,
+html[data-code-theme="vitesse-dark"] .shiki span {
+    color: var(--shiki-vitesse-dark);
+    background-color: var(--shiki-vitesse-dark-bg);
+}
+
+html[data-code-theme="vitesse-light"] .shiki,
+html[data-code-theme="vitesse-light"] .shiki span {
+    color: var(--shiki-vitesse-light);
+    background-color: var(--shiki-vitesse-light-bg);
+}

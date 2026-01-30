@@ -63,6 +63,22 @@ func ExtractParamName(path string) ([]string, error) {
 	return cleanParams, nil
 }
 
+// IsASCIILetterString checks if a string contains only ASCII letters (a-z, A-Z).
+func IsASCIILetterString(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+
+	for _, r := range s {
+		if !isASCIILetter(r) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// isASCIILetter checks if a rune is an ASCII letter (a-z, A-Z).
 func isASCIILetter(r rune) bool {
 	if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
 		return true
