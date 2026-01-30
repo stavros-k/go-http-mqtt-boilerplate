@@ -42,11 +42,18 @@ func FromJSONStream[T any](r io.Reader) (T, error) {
 		return result, err
 	}
 
-	if decoder.More() {
+	// Attempt a second decode to detect extra top-level JSON values
+	switch decoder.Decode(new(any)) {
+	case io.EOF:
+		// EOF is expected - no extra data
+		return result, nil
+	case nil:
+		// No error means extra data was successfully decoded
 		return result, &ExtraDataAfterJSONError{}
 	}
 
-	return result, nil
+	// Any other error should be propagated
+	return result, err
 }
 
 // MustFromJSON decodes JSON from byte slice (wrapper around streaming version).

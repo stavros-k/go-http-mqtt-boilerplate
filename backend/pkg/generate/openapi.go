@@ -18,6 +18,17 @@ const (
 	OpenAPIVersion = "3.0.3"
 )
 
+// isPrimitiveType checks if a type name represents a valid OpenAPI primitive type.
+// Note: "array" and "object" are excluded as they require additional schema information.
+func isPrimitiveType(typeName string) bool {
+	switch typeName {
+	case "string", "number", "integer", "boolean":
+		return true
+	default:
+		return false
+	}
+}
+
 // toOpenAPISchema converts extracted type metadata to an OpenAPI schema.
 func toOpenAPISchema(typeInfo *TypeInfo) (*openapi3.Schema, error) {
 	switch {
@@ -421,6 +432,11 @@ func buildOperation(route *RouteInfo, types map[string]*TypeInfo) (*openapi3.Ope
 
 			p.Schema = &openapi3.SchemaRef{Value: schema}
 		} else {
+			// Validate that it's a known primitive type before creating inline schema
+			if !isPrimitiveType(param.TypeName) {
+				return nil, fmt.Errorf("parameter %s has unregistered type %s (not found in types map and not a valid primitive type)", param.Name, param.TypeName)
+			}
+
 			// Primitive type - create inline schema
 			p.Schema = &openapi3.SchemaRef{
 				Value: &openapi3.Schema{Type: &openapi3.Types{param.TypeName}},
