@@ -14,7 +14,10 @@ type Props = {
 
 export const SidebarItem = ({ type, item }: Props) => {
     const params = useParams();
-    const currentName = type === "operation" ? params.operationId : params[type];
+    const currentName =
+        type === "operation" || type === "mqtt-publication" || type === "mqtt-subscription"
+            ? params.operationId
+            : params[type];
     const { urlPath, data, title } = item;
     const isDeprecated = !!data?.deprecated;
     const isActive = currentName === item.name;
