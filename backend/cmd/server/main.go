@@ -139,7 +139,10 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *api.Handle
 		})
 	})
 
-	web.DocsApp().Register(rb.Router(), l)
+	webapp, err := web.DocsApp()
+	fatalIfErr(l, err)
+	webapp.Register(rb.Router(), l)
+
 	rb.Router().HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
 	})

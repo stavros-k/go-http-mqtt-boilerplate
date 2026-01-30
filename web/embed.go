@@ -3,7 +3,6 @@ package web
 import (
 	"embed"
 	"io/fs"
-	"log"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -17,7 +16,7 @@ type Router interface {
 	Mount(pattern string, handler http.Handler)
 }
 
-func DocsApp() WebApp { return NewWebApp("docs", docsFS, "docs/dist", "/docs/") }
+func DocsApp() (WebApp, error) { return NewWebApp("docs", docsFS, "docs/dist", "/docs/") }
 
 type WebApp struct {
 	name    string
@@ -26,10 +25,10 @@ type WebApp struct {
 	urlBase string
 }
 
-func NewWebApp(name string, app fs.FS, subDir string, urlBase string) WebApp {
+func NewWebApp(name string, app fs.FS, subDir string, urlBase string) (WebApp, error) {
 	subFS, err := fs.Sub(app, subDir)
 	if err != nil {
-		log.Fatal(err)
+		return WebApp{}, err
 	}
 
 	// Ensure urlBase starts with / and ends with /
@@ -42,7 +41,7 @@ func NewWebApp(name string, app fs.FS, subDir string, urlBase string) WebApp {
 		fs:      subFS,
 		urlBase: urlBase,
 		l:       slog.Default().With(slog.String("component", name)),
-	}
+	}, nil
 }
 
 func (wa WebApp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
