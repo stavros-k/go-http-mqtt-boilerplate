@@ -49,16 +49,6 @@ components:
                 - requestID
                 - message
             type: object
-        GetTeamRequest:
-            additionalProperties: false
-            description: GetTeamRequest is the request to get a team.
-            properties:
-                teamID:
-                    description: ID of the team to get
-                    type: string
-            required:
-                - teamID
-            type: object
         GetTeamResponse:
             additionalProperties: false
             deprecated: true
@@ -364,19 +354,6 @@ paths:
                   required: true
                   schema:
                     type: string
-            requestBody:
-                content:
-                    application/json:
-                        examples:
-                            example-1:
-                                value:
-                                    teamID: abxc
-                                    users:
-                                        - name: ""
-                                          userID: Asdf
-                        schema:
-                            $ref: '#/components/schemas/GetTeamRequest'
-                required: true
             responses:
                 "200":
                     content:

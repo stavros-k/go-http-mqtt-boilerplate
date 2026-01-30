@@ -27,12 +27,7 @@ func (s *Handler) RegisterGetTeam(path string, rb *router.RouteBuilder) {
 		Group:       TeamGroup,
 		Deprecated:  "Use GetTeamResponseV2 instead.",
 		Handler:     ErrorHandler(s.GetTeam),
-		RequestType: &router.RequestBodySpec{
-			Type: apitypes.GetTeamRequest{TeamID: "abxc"},
-			Examples: map[string]any{
-				"example-1": apitypes.GetTeamResponse{TeamID: "abxc", Users: []apitypes.User{{UserID: "Asdf"}}},
-			},
-		},
+		RequestType: nil,
 		Parameters: map[string]router.ParameterSpec{
 			"teamID": {
 				In:          "path",
