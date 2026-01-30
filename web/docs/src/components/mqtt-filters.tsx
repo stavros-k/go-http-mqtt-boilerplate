@@ -49,8 +49,13 @@ export function MQTTFilters({ groups, onFilterChange }: MQTTFiltersProps) {
                 {/* Group Filter */}
                 {groups.length > 0 && (
                     <div className='flex items-center gap-3'>
-                        <span className='font-bold text-sm text-text-primary'>Group:</span>
+                        <label
+                            htmlFor='group-select'
+                            className='font-bold text-sm text-text-primary'>
+                            Group:
+                        </label>
                         <select
+                            id='group-select'
                             value={selectedGroup}
                             onChange={(e) => handleGroupChange(e.target.value)}
                             className='cursor-pointer rounded-lg border-2 border-border-primary bg-bg-tertiary px-3 py-1.5 font-bold text-sm text-text-primary hover:border-accent-blue focus:border-accent-blue focus:ring-2 focus:ring-accent-blue'>
@@ -82,8 +87,13 @@ export function MQTTFilters({ groups, onFilterChange }: MQTTFiltersProps) {
 
             {/* Search */}
             <div className='flex items-center gap-3'>
-                <span className='font-bold text-sm text-text-primary'>Search:</span>
+                <label
+                    htmlFor='mqtt-search'
+                    className='font-bold text-sm text-text-primary'>
+                    Search:
+                </label>
                 <input
+                    id='mqtt-search'
                     type='text'
                     value={search}
                     onChange={(e) => handleSearchChange(e.target.value)}
