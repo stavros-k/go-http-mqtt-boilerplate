@@ -14,6 +14,7 @@ type TypeInfo struct {
 	Representations Representations `json:"representations"` // JSON, JSON Schema, and TypeScript representations of the type
 	UsedByHTTP      bool            `json:"usedByHTTP"`      // Whether this type is used by HTTP operations
 	UsedByMQTT      bool            `json:"usedByMQTT"`      // Whether this type is used by MQTT operations
+	UnderlyingType  *FieldType      `json:"underlyingType"`  // For alias types: the underlying type being aliased
 }
 
 type Representations struct {

@@ -25,6 +25,8 @@ func toOpenAPISchema(typeInfo *TypeInfo) (*openapi3.Schema, error) {
 		return buildObjectSchema(typeInfo)
 	case isEnumKind(typeInfo.Kind):
 		return buildEnumSchema(typeInfo)
+	case typeInfo.Kind == TypeKindAlias:
+		return buildAliasSchema(typeInfo)
 	default:
 		return nil, fmt.Errorf("unsupported type kind: %s", typeInfo.Kind)
 	}
@@ -283,6 +285,33 @@ func buildEnumSchema(typeInfo *TypeInfo) (*openapi3.Schema, error) {
 		Description: enumDesc.String(),
 		Deprecated:  typeInfo.Deprecated != "",
 	}, nil
+}
+
+// buildAliasSchema creates an OpenAPI schema for alias types by resolving to the underlying type.
+func buildAliasSchema(typeInfo *TypeInfo) (*openapi3.Schema, error) {
+	if typeInfo.UnderlyingType == nil {
+		return nil, fmt.Errorf("alias type %s has no underlying type information", typeInfo.Name)
+	}
+
+	// Build schema from the underlying type
+	schemaRef, err := buildSchemaFromFieldType(*typeInfo.UnderlyingType, typeInfo.Description)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build schema for alias %s: %w", typeInfo.Name, err)
+	}
+
+	// Extract the schema from the SchemaRef
+	if schemaRef.Value == nil {
+		return nil, fmt.Errorf("alias type %s resolved to a reference schema instead of an inline schema", typeInfo.Name)
+	}
+
+	schema := schemaRef.Value
+
+	// Apply type-level deprecation if set
+	if typeInfo.Deprecated != "" {
+		schema.Deprecated = true
+	}
+
+	return schema, nil
 }
 
 // buildComponentSchemas builds OpenAPI component schemas from HTTP-related types only.

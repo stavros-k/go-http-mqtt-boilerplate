@@ -803,10 +803,28 @@ func (g *OpenAPICollector) extractTypeFromSpec(name string, typeSpec *ast.TypeSp
 		// Type alias to another type (e.g., type MyString string)
 		typeInfo.Kind = TypeKindAlias
 
+		// Extract the underlying type information
+		underlyingType, refs, err := g.analyzeGoType(t)
+		if err != nil {
+			return nil, fmt.Errorf("failed to analyze underlying type for alias %s: %w", name, err)
+		}
+
+		typeInfo.UnderlyingType = &underlyingType
+		typeInfo.References = refs
+
 		return typeInfo, nil
 	case *ast.ArrayType, *ast.MapType:
 		// Arrays and maps as top-level types are treated as aliases
 		typeInfo.Kind = TypeKindAlias
+
+		// Extract the underlying type information
+		underlyingType, refs, err := g.analyzeGoType(typeSpec.Type)
+		if err != nil {
+			return nil, fmt.Errorf("failed to analyze underlying type for alias %s: %w", name, err)
+		}
+
+		typeInfo.UnderlyingType = &underlyingType
+		typeInfo.References = refs
 
 		return typeInfo, nil
 	default:
