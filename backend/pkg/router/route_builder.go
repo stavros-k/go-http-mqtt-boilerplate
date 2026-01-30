@@ -32,14 +32,6 @@ func NewRouteBuilder(l *slog.Logger, collector generate.RouteMetadataCollector) 
 	}, nil
 }
 
-// Must terminates the program if an error occurs.
-func (rb *RouteBuilder) Must(err error) {
-	if err != nil {
-		rb.l.Error("Fatal error", utils.ErrAttr(err))
-		os.Exit(1)
-	}
-}
-
 // Route adds a new route group to the router.
 func (rb *RouteBuilder) Route(path string, fn func(rb *RouteBuilder)) {
 	oldPrefix := rb.prefix
