@@ -93,8 +93,13 @@ export function TypeFilters({ kinds, onFilterChange }: TypeFiltersProps) {
 
             {/* Search */}
             <div className='flex items-center gap-3'>
-                <span className='font-bold text-sm text-text-primary'>Search:</span>
+                <label
+                    htmlFor='type-search'
+                    className='font-bold text-sm text-text-primary'>
+                    Search:
+                </label>
                 <input
+                    id='type-search'
                     type='text'
                     value={search}
                     onChange={(e) => handleSearchChange(e.target.value)}

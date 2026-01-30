@@ -49,6 +49,8 @@ export function OperationHeader({ method, path, parameters }: OperationHeaderPro
                                         }`}
                                         onMouseEnter={() => setHoveredParam(paramName)}
                                         onMouseLeave={() => setHoveredParam(null)}
+                                        onFocus={() => setHoveredParam(paramName)}
+                                        onBlur={() => setHoveredParam(null)}
                                         aria-label={`Highlight ${paramName} parameter`}>
                                         {paramName}
                                     </button>
@@ -77,6 +79,8 @@ export function OperationHeader({ method, path, parameters }: OperationHeaderPro
                                     }`}
                                     onMouseEnter={() => setHoveredParam(param.name)}
                                     onMouseLeave={() => setHoveredParam(null)}
+                                    onFocus={() => setHoveredParam(param.name)}
+                                    onBlur={() => setHoveredParam(null)}
                                     aria-label={`Highlight ${param.name} parameter in path`}>
                                     <div className='mb-2 flex items-start justify-between gap-4'>
                                         <div className='flex flex-wrap items-center gap-2'>
