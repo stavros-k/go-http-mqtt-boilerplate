@@ -65,6 +65,10 @@ func ExtractParamName(path string) ([]string, error) {
 
 // IsASCIILetterString checks if a string contains only ASCII letters (a-z, A-Z).
 func IsASCIILetterString(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+
 	for _, r := range s {
 		if !isASCIILetter(r) {
 			return false
