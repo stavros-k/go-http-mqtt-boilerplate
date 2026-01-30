@@ -12,16 +12,16 @@
         "docs:preview": "npm run preview --workspace=web/docs"
     },
     "devDependencies": {
+        "@biomejs/biome": "2.3.13",
+        "@types/node": "25.1.0",
         "@types/react": "19.2.9",
         "@types/react-dom": "19.2.3",
         "browserslist": "4.28.1",
         "typescript": "5.9.3"
     },
     "dependencies": {
-        "@biomejs/biome": "2.3.13",
         "@tailwindcss/postcss": "4.1.18",
         "@tailwindcss/vite": "4.1.18",
-        "@types/node": "25.0.10",
         "react": "19.2.4",
         "react-dom": "19.2.4",
         "tailwindcss": "4.1.18",
