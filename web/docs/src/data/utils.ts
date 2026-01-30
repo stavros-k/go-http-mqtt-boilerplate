@@ -8,6 +8,6 @@ export function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<strin
             acc[key].push(item);
             return acc;
         },
-        {} as Record<string, T[]>
+        Object.create(null) as Record<string, T[]>
     );
 }
