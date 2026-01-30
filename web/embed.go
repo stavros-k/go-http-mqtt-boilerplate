@@ -32,8 +32,10 @@ func NewWebApp(name string, app fs.FS, subDir string, urlBase string) WebApp {
 		log.Fatal(err)
 	}
 
-	// Ensure urlBase ends with /
-	urlBase = strings.TrimSuffix(urlBase, "/") + "/"
+	// Ensure urlBase starts with / and ends with /
+	urlBase = strings.TrimSuffix(urlBase, "/")
+	urlBase = strings.TrimPrefix(urlBase, "/")
+	urlBase = "/" + urlBase + "/"
 
 	return WebApp{
 		name:    name,
