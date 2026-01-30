@@ -69,7 +69,7 @@ func (wa WebApp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	wa.l.Warn("File not found", slog.String("path", path))
 
 	// File not found, redirect to base URL
-	http.Redirect(w, r, wa.urlBase, http.StatusTemporaryRedirect)
+	http.NotFound(w, r)
 }
 
 func (wa WebApp) URLBase() string {
