@@ -403,6 +403,8 @@ func generateOpenAPISpec(doc *APIDocumentation) (*openapi3.T, error) {
 			pathItem.Patch = op
 		case http.MethodDelete:
 			pathItem.Delete = op
+		default:
+			return nil, fmt.Errorf("unsupported HTTP method: %s", route.Method)
 		}
 	}
 
