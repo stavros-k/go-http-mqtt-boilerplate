@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { MdExpandLess, MdExpandMore } from "react-icons/md";
 
 type CollapsibleGroupProps = {
@@ -11,19 +11,31 @@ type CollapsibleGroupProps = {
 
 export function CollapsibleGroup({ title, children, defaultOpen = true }: CollapsibleGroupProps) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
+    const buttonId = useId();
+    const panelId = `${buttonId}-panel`;
 
     return (
         <div className='mb-12'>
             <button
+                id={buttonId}
                 type='button'
                 onClick={() => setIsOpen((prev) => !prev)}
+                aria-expanded={isOpen}
+                aria-controls={panelId}
                 className='group mb-6 flex w-full items-center justify-between border-border-primary border-b-2 pb-3 font-bold text-2xl text-text-primary transition-all duration-200 hover:border-accent-blue hover:text-accent-blue'>
                 <h2 className='transition-transform group-hover:scale-105'>{title}</h2>
                 <span className='text-text-muted transition-colors group-hover:text-accent-blue'>
                     {isOpen ? <MdExpandLess className='h-7 w-7' /> : <MdExpandMore className='h-7 w-7' />}
                 </span>
             </button>
-            {isOpen && <div className='grid gap-5'>{children}</div>}
+            {isOpen && (
+                <section
+                    id={panelId}
+                    aria-labelledby={buttonId}
+                    className='grid gap-5'>
+                    {children}
+                </section>
+            )}
         </div>
     );
 }
@@ -37,12 +49,17 @@ type CollapsibleCardProps = {
 
 export function CollapsibleCard({ title, subtitle, children, defaultOpen = false }: CollapsibleCardProps) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
+    const buttonId = useId();
+    const panelId = `${buttonId}-panel`;
 
     return (
         <div className='mb-6 overflow-hidden rounded-xl border-2 border-border-secondary shadow-sm transition-shadow hover:shadow-md'>
             <button
+                id={buttonId}
                 type='button'
                 onClick={() => setIsOpen((prev) => !prev)}
+                aria-expanded={isOpen}
+                aria-controls={panelId}
                 className='group flex w-full cursor-pointer items-center justify-between bg-bg-tertiary p-5 font-bold text-text-primary transition-colors duration-200 hover:bg-bg-hover'>
                 <div className='text-left'>
                     <div className='transition-colors group-hover:text-accent-blue'>{title}</div>
@@ -52,7 +69,14 @@ export function CollapsibleCard({ title, subtitle, children, defaultOpen = false
                     {isOpen ? <MdExpandLess className='h-6 w-6' /> : <MdExpandMore className='h-6 w-6' />}
                 </span>
             </button>
-            {isOpen && <div className='bg-bg-secondary p-5'>{children}</div>}
+            {isOpen && (
+                <section
+                    id={panelId}
+                    aria-labelledby={buttonId}
+                    className='bg-bg-secondary p-5'>
+                    {children}
+                </section>
+            )}
         </div>
     );
 }
