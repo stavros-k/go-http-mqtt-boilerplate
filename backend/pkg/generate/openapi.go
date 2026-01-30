@@ -464,16 +464,16 @@ func buildOperation(route *RouteInfo, types map[string]*TypeInfo) (*openapi3.Ope
 
 	// Add request body
 	if route.Request != nil {
-		// Validate that the request type is registered
-		if _, ok := types[route.Request.TypeName]; !ok {
-			return nil, fmt.Errorf("request body has unregistered type %s (not found in types map)", route.Request.TypeName)
+		content, err := buildJSONContent(route.Request.TypeName, route.Request.Examples, types)
+		if err != nil {
+			return nil, fmt.Errorf("request body: %w", err)
 		}
 
 		op.RequestBody = &openapi3.RequestBodyRef{
 			Value: &openapi3.RequestBody{
 				Required:    true,
 				Description: route.Request.Description,
-				Content:     createJSONContent(route.Request.TypeName, route.Request.Examples),
+				Content:     content,
 			},
 		}
 	}
@@ -484,12 +484,12 @@ func buildOperation(route *RouteInfo, types map[string]*TypeInfo) (*openapi3.Ope
 		response := &openapi3.Response{Description: &resp.Description}
 
 		if resp.TypeName != "" {
-			// Validate that the response type is registered
-			if _, ok := types[resp.TypeName]; !ok {
-				return nil, fmt.Errorf("response for status %d has unregistered type %s (not found in types map)", statusCode, resp.TypeName)
+			content, err := buildJSONContent(resp.TypeName, resp.Examples, types)
+			if err != nil {
+				return nil, fmt.Errorf("response for status %d: %w", statusCode, err)
 			}
 
-			response.Content = createJSONContent(resp.TypeName, resp.Examples)
+			response.Content = content
 		}
 
 		op.Responses.Set(statusStr, &openapi3.ResponseRef{Value: response})
@@ -506,6 +506,32 @@ func createJSONContent(typeName string, examples map[string]any) openapi3.Conten
 			Examples: convertExamplesToOpenAPI(examples),
 		},
 	}
+}
+
+// buildJSONContent creates OpenAPI content for application/json with validation.
+// Returns content for registered types (via reference), inline schemas for primitives, or error for unknown types.
+func buildJSONContent(typeName string, examples map[string]any, types map[string]*TypeInfo) (openapi3.Content, error) {
+	// Check if type is registered in types map
+	if _, ok := types[typeName]; ok {
+		// Type exists - create reference via createJSONContent
+		return createJSONContent(typeName, examples), nil
+	}
+
+	// Check if it's a primitive type
+	if isPrimitiveType(typeName) {
+		// Primitive type - create inline schema
+		return openapi3.Content{
+			"application/json": &openapi3.MediaType{
+				Schema: &openapi3.SchemaRef{
+					Value: &openapi3.Schema{Type: &openapi3.Types{typeName}},
+				},
+				Examples: convertExamplesToOpenAPI(examples),
+			},
+		}, nil
+	}
+
+	// Unknown type - return error
+	return nil, fmt.Errorf("type %s not found in types map and not a valid primitive type", typeName)
 }
 
 // createSchemaRef creates a schema reference for the given type name.
