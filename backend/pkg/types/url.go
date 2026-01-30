@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"net/url"
@@ -45,6 +46,12 @@ func (u URL) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON unmarshals a JSON string into a URL.
 func (u *URL) UnmarshalJSON(data []byte) error {
+	// Handle JSON null explicitly
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		u.URL = nil
+		return nil
+	}
+
 	s, err := utils.FromJSON[string](data)
 	if err != nil {
 		return err
