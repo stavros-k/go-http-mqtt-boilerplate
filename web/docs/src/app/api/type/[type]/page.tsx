@@ -29,6 +29,10 @@ export default async function Type(props: PageProps<"/api/type/[type]">) {
     const { type } = params as { type: TypeKeys };
     const data = docs.types[type];
 
+    if (!data) {
+        throw new Error(`Type "${type}" not found - generateStaticParams mismatch`);
+    }
+
     return (
         <div className='flex-1 overflow-y-auto p-10'>
             <Breadcrumbs items={[{ label: "Types", href: "/api/types" as Route }, { label: type }]} />

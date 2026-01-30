@@ -34,7 +34,7 @@ export default async function OperationPage(props: PageProps<"/api/operation/[op
     const operation = allOperations.find((op) => op.operationID === operationId);
 
     if (!operation) {
-        return <div>Operation not found</div>;
+        throw new Error(`Operation "${operationId}" not found - generateStaticParams mismatch`);
     }
 
     const requestJson = operation.request ? getTypeJson(operation.request.type as TypeKeys) : null;

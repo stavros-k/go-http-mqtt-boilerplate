@@ -32,7 +32,7 @@ export default async function MQTTPublicationPage(props: PageProps<"/api/mqtt/pu
     const publication = allPublications.find((pub) => pub.operationID === operationId);
 
     if (!publication) {
-        return <div>MQTT Publication not found</div>;
+        throw new Error(`MQTT Publication "${operationId}" not found - generateStaticParams mismatch`);
     }
 
     const messageJson = publication.type ? getTypeJson(publication.type as TypeKeys) : null;

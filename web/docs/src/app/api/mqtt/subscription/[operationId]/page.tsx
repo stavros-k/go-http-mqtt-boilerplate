@@ -32,7 +32,7 @@ export default async function MQTTSubscriptionPage(props: PageProps<"/api/mqtt/s
     const subscription = allSubscriptions.find((sub) => sub.operationID === operationId);
 
     if (!subscription) {
-        return <div>MQTT Subscription not found</div>;
+        throw new Error(`MQTT Subscription "${operationId}" not found - generateStaticParams mismatch`);
     }
 
     const messageJson = subscription.type ? getTypeJson(subscription.type as TypeKeys) : null;
