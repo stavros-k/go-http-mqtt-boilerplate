@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"http-mqtt-boilerplate/backend/pkg/generate"
+	"net/http"
 	"slices"
 	"strings"
 )
@@ -28,6 +29,11 @@ func validateRouteSpec(spec RouteSpec) error {
 
 	if spec.Handler == nil {
 		return errors.New("field Handler required")
+	}
+
+	// GET requests must not have request bodies
+	if spec.method == http.MethodGet && spec.RequestType != nil {
+		return fmt.Errorf("GET requests must not have request bodies (operation: %s, path: %s)", spec.OperationID, spec.fullPath)
 	}
 
 	return nil
