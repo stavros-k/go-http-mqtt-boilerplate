@@ -43,7 +43,8 @@ func FromJSONStream[T any](r io.Reader) (T, error) {
 	}
 
 	// Attempt a second decode to detect extra top-level JSON values
-	switch decoder.Decode(new(any)) {
+	err = decoder.Decode(new(any))
+	switch err {
 	case io.EOF:
 		// EOF is expected - no extra data
 		return result, nil
