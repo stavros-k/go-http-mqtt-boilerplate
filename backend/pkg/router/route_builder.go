@@ -222,13 +222,9 @@ func (rb *RouteBuilder) add(path string, spec RouteSpec) error {
 		return fmt.Errorf("operation ID %s already exists", spec.OperationID)
 	}
 
-	rb.operationIDs[spec.OperationID] = struct{}{}
 	if err := validateRouteSpec(spec); err != nil {
 		return fmt.Errorf("invalid route spec: %w", err)
 	}
-
-	// Register route with router
-	rb.router.Method(spec.method, spec.fullPath, spec.Handler)
 
 	// Collect parameters metadata
 	parameters, err := generateParameters(spec)
@@ -279,6 +275,12 @@ func (rb *RouteBuilder) add(path string, spec RouteSpec) error {
 	}); err != nil {
 		return fmt.Errorf("failed to register route: %w", err)
 	}
+
+	// Everything is good here. Register the route.
+
+	// Register route with router
+	rb.router.Method(spec.method, spec.fullPath, spec.Handler)
+	rb.operationIDs[spec.OperationID] = struct{}{}
 
 	rb.l.Info("Registered route", slog.String("method", spec.method), slog.String("path", spec.fullPath), slog.String("operationID", spec.OperationID))
 
