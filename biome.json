@@ -1,0 +1,70 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.3.13/schema.json",
+    "vcs": {
+        "enabled": true,
+        "clientKind": "git",
+        "useIgnoreFile": true
+    },
+    "files": {
+        "ignoreUnknown": true,
+        "includes": [
+            "**",
+            "!node_modules",
+            "!.next",
+            "!dist",
+            "!build",
+            "!package-lock.json",
+            "!api_docs.json",
+            "!test.json",
+            "!**/testdata",
+            "!**/ws-client/generated.ts"
+        ]
+    },
+    "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineEnding": "lf",
+        "lineWidth": 120,
+        "attributePosition": "multiline"
+    },
+    "css": {
+        "parser": {
+            "tailwindDirectives": true
+        }
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "double",
+            "jsxQuoteStyle": "single",
+            "trailingCommas": "es5",
+            "bracketSameLine": true
+        }
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": true,
+            "nursery": {
+                "useSortedClasses": {
+                    "level": "on",
+                    "fix": "safe",
+                    "options": {
+                        "functions": ["clsx", "cva", "tw"]
+                    }
+                }
+            }
+        },
+        "domains": {
+            "next": "recommended",
+            "react": "recommended"
+        }
+    },
+    "assist": {
+        "actions": {
+            "source": {
+                "organizeImports": "on"
+            }
+        }
+    }
+}
