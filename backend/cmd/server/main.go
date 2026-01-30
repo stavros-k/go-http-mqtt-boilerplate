@@ -41,8 +41,6 @@ func main() {
 	// Initialize logger
 	logger := getLogger(config)
 
-	// TODO: Pass DB
-	// open sqlite database
 	db, err := sql.Open("sqlite3", config.Database)
 	fatalIfErr(logger, err)
 
