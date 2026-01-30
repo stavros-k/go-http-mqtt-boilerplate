@@ -35,17 +35,7 @@ export function getTypeJson(typeName: TypeKeys | "null") {
     const representations = type?.representations;
     if (!representations) return null;
 
-    // Use jsonSchema if json is empty, otherwise use json
-    const jsonRep = type.representations.json;
-    if (jsonRep && jsonRep.trim() !== "") {
-        return jsonRep;
-    }
-    // Fallback to jsonSchema if available
-    const jsonSchema = type.representations.jsonSchema;
-    if (jsonSchema && jsonSchema.trim() !== "") {
-        return jsonSchema;
-    }
-    return null;
+    return type.representations.json;
 }
 
 export function getAllOperations(): OperationData[] {
