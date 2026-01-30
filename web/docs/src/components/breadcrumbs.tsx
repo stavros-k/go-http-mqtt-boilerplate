@@ -13,7 +13,9 @@ type BreadcrumbsProps = {
 
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
     return (
-        <nav className='mb-6 flex items-center gap-2 text-sm text-text-secondary'>
+        <nav
+            aria-label='Breadcrumbs'
+            className='mb-6 flex items-center gap-2 text-sm text-text-secondary'>
             <Link
                 href='/'
                 className='flex items-center gap-1 transition-colors hover:text-accent-blue'>
@@ -34,7 +36,11 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
                                 {item.label}
                             </Link>
                         ) : (
-                            <span className={isLast ? "font-semibold text-text-primary" : ""}>{item.label}</span>
+                            <span
+                                className={isLast ? "font-semibold text-text-primary" : ""}
+                                aria-current={isLast ? "page" : undefined}>
+                                {item.label}
+                            </span>
                         )}
                     </div>
                 );
