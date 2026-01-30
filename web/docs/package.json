@@ -1,0 +1,20 @@
+{
+    "name": "rest-docs",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "biome check",
+        "format": "biome check --write"
+    },
+    "devDependencies": {
+        "shiki": "3.21.0"
+    },
+    "dependencies": {
+        "babel-plugin-react-compiler": "1.0.0",
+        "next": "16.1.4",
+        "react-icons": "5.5.0"
+    }
+}
