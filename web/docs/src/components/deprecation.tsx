@@ -13,9 +13,12 @@ function getItemLabel(itemType: Props["itemType"]) {
             return "MQTT publication";
         case "mqtt subscription":
             return "MQTT subscription";
+        default:
+            throw new Error(`Invalid itemType: ${itemType}`);
     }
 }
-export const Deprecation = ({ deprecated, itemType = "type" }: Props) => {
+
+export const Deprecation = ({ deprecated, itemType }: Props) => {
     if (!deprecated) return null;
 
     return (
