@@ -164,15 +164,18 @@ func buildPrimitiveSchemaFromFieldType(ft FieldType, description string) (*opena
 
 // buildArraySchemaFromFieldType builds a schema for array types.
 func buildArraySchemaFromFieldType(ft FieldType, description string) (*openapi3.SchemaRef, error) {
-	var itemSchema *openapi3.SchemaRef
+	// Arrays must have an items type per OpenAPI spec
+	if ft.ItemsType == nil {
+		return nil, errors.New("array type requires items schema: ItemsType is nil")
+	}
 
-	if ft.ItemsType != nil {
-		var err error
+	itemSchema, err := buildSchemaFromFieldType(*ft.ItemsType, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to build items schema for array: %w", err)
+	}
 
-		itemSchema, err = buildSchemaFromFieldType(*ft.ItemsType, "")
-		if err != nil {
-			return nil, err
-		}
+	if itemSchema == nil {
+		return nil, errors.New("array type requires items schema: buildSchemaFromFieldType returned nil")
 	}
 
 	schema := &openapi3.Schema{
