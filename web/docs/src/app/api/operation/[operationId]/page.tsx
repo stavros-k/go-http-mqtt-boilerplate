@@ -1,4 +1,5 @@
 import type { Route } from "next";
+import Link from "next/link";
 import { BackButton } from "@/components/back-button";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CardBoxWrapper } from "@/components/card-box-wrapper";
@@ -113,11 +114,11 @@ export default async function OperationPage(props: PageProps<"/api/operation/[op
                                     <div className='mb-4'>
                                         <div className='mb-2 font-semibold text-sm text-text-tertiary'>
                                             Type:{" "}
-                                            <a
+                                            <Link
                                                 href={`/api/type/${resp.type}`}
                                                 className='text-accent-blue-hover transition-colors hover:text-accent-blue-light'>
                                                 {resp.type}
-                                            </a>
+                                            </Link>
                                         </div>
                                     </div>
                                     {resp.examples && Object.keys(resp.examples).length > 0 ? (
