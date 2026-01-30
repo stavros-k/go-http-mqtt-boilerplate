@@ -80,11 +80,11 @@ func main() {
 		return
 	}
 
+	defer mb.Disconnect()
 	go func() {
 		if err := mb.Connect(); err != nil {
 			logger.Error("Failed to connect to MQTT broker", utils.ErrAttr(err))
 		}
-		defer mb.Disconnect()
 	}()
 
 	addr := fmt.Sprintf(":%d", config.Port)
