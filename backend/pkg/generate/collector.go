@@ -601,14 +601,14 @@ func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
 	return nil
 }
 
-// validateOperationIDFormat checks that an operationID contains only alphanumeric characters.
+// validateOperationIDFormat checks that an operationID contains only characters a-z, A-Z.
 func validateOperationIDFormat(operationID string) error {
 	if operationID == "" {
 		return errors.New("operationID cannot be empty")
 	}
 
 	if !IsASCIILetterString(operationID) {
-		return fmt.Errorf("operationID %q contains invalid characters (only alphanumeric characters a-z, A-Z, 0-9 are allowed)", operationID)
+		return fmt.Errorf("operationID %q contains invalid characters (only characters a-z, A-Z are allowed)", operationID)
 	}
 
 	return nil
