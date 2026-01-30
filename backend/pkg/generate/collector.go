@@ -378,7 +378,7 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 		return fmt.Errorf("duplicate operationID: %s", route.OperationID)
 	}
 
-	// Extract type names from zero values using reflection, and stringify examples
+	// Request type should be either `nil` or a non-zero struct type
 	if route.Request != nil {
 		if reflect.ValueOf(route.Request.TypeValue).IsZero() {
 			return fmt.Errorf("request Type must not be zero value in route [%s]", route.OperationID)
@@ -394,6 +394,9 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 	}
 
 	for statusCode, response := range route.Responses {
+		if !reflect.ValueOf(response.TypeValue).IsZero() {
+			return fmt.Errorf("response Type must be zero value in route [%s]", route.OperationID)
+		}
 		resp := response
 
 		typeName, stringifiedExamples, err := g.processHTTPType(resp.TypeValue, resp.Examples, "response")
@@ -571,6 +574,10 @@ func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeVal
 // registerExamples registers JSON representations for a slice of examples.
 func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
 	for _, ex := range examples {
+		if reflect.ValueOf(ex).IsZero() {
+			return fmt.Errorf("value for example should not be zero value")
+		}
+
 		if err := g.RegisterJSONRepresentation(ex); err != nil {
 			return err
 		}
