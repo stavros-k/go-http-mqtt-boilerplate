@@ -1,0 +1,147 @@
+package config
+
+import (
+	"fmt"
+	"io"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+)
+
+type EnvKey string
+
+const (
+	EnvGenerate EnvKey = "GENERATE"
+
+	EnvPort      EnvKey = "PORT"
+	EnvDataDir   EnvKey = "DATA_DIR"
+	EnvLogLevel  EnvKey = "LOG_LEVEL"
+	EnvLogToFile EnvKey = "LOG_TO_FILE"
+
+	EnvMQTTBroker   EnvKey = "MQTT_BROKER"
+	EnvMQTTClientID EnvKey = "MQTT_CLIENT_ID"
+	EnvMQTTUsername EnvKey = "MQTT_USERNAME"
+	EnvMQTTPassword EnvKey = "MQTT_PASSWORD"
+)
+
+type Config struct {
+	Port      int
+	Generate  bool
+	DataDir   string
+	Database  string
+	LogLevel  slog.Leveler
+	LogOutput io.Writer
+
+	// MQTT configuration
+	MQTTBroker   string
+	MQTTClientID string
+	MQTTUsername string
+	MQTTPassword string
+}
+
+func New() (*Config, error) {
+	// Get data directory
+	dataDir := getStringEnv(EnvDataDir, "data")
+
+	// Ensure data directory exists
+	if err := os.MkdirAll(dataDir, 0o750); err != nil {
+		return nil, fmt.Errorf("failed to create data directory: %w", err)
+	}
+
+	// Derive paths from data directory
+	dbPath := filepath.Join(dataDir, "database.sqlite")
+	logPath := filepath.Join(dataDir, "app.log")
+
+	var logOutput io.Writer = os.Stdout
+
+	if getBoolEnv(EnvLogToFile, false) {
+		f, err := os.OpenFile(logPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open log file: %w", err)
+		}
+
+		logOutput = f
+	}
+
+	return &Config{
+		Port:         getIntEnv(EnvPort, 8080),
+		Generate:     getBoolEnv(EnvGenerate, false),
+		DataDir:      dataDir,
+		Database:     dbPath,
+		LogLevel:     getLogLevelEnv(EnvLogLevel, slog.LevelInfo),
+		LogOutput:    logOutput,
+		MQTTBroker:   getStringEnv(EnvMQTTBroker, "tcp://localhost:1883"),
+		MQTTClientID: getStringEnv(EnvMQTTClientID, "http-mqtt-boilerplate-server"),
+		MQTTUsername: getStringEnv(EnvMQTTUsername, ""),
+		MQTTPassword: getStringEnv(EnvMQTTPassword, ""),
+	}, nil
+}
+
+func (c *Config) Close() error {
+	if f, ok := c.LogOutput.(*os.File); ok {
+		if f != os.Stdout && f != os.Stderr {
+			return f.Close()
+		}
+	}
+
+	return nil
+}
+
+func getStringEnv(key EnvKey, defaultVal string) string {
+	val, exists := os.LookupEnv(string(key))
+	if !exists {
+		return defaultVal
+	}
+
+	return val
+}
+
+func getBoolEnv(key EnvKey, defaultVal bool) bool {
+	val, exists := os.LookupEnv(string(key))
+	if !exists {
+		return defaultVal
+	}
+
+	val = strings.ToLower(val)
+	switch val {
+	case "true", "1":
+		return true
+	default:
+		return false
+	}
+}
+
+func getIntEnv(key EnvKey, defaultVal int) int {
+	val, exists := os.LookupEnv(string(key))
+	if !exists {
+		return defaultVal
+	}
+
+	if intVal, err := strconv.Atoi(val); err == nil {
+		return intVal
+	}
+
+	return defaultVal
+}
+
+func getLogLevelEnv(key EnvKey, defaultVal slog.Leveler) slog.Leveler {
+	val, exists := os.LookupEnv(string(key))
+	if !exists {
+		return defaultVal
+	}
+
+	switch strings.ToUpper(val) {
+	case "DEBUG":
+		return slog.LevelDebug
+	case "INFO":
+		return slog.LevelInfo
+	case "WARN":
+		return slog.LevelWarn
+	case "ERROR":
+		return slog.LevelError
+	}
+
+	return defaultVal
+}
