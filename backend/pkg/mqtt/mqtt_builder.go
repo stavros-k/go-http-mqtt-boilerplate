@@ -7,6 +7,7 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"os"
+	"sync/atomic"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -24,6 +25,8 @@ type MQTTBuilder struct {
 	publications  map[string]*PublicationSpec
 	subscriptions map[string]*SubscriptionSpec
 	connected     bool
+
+	runConnectOnce atomic.Bool
 }
 
 // MQTTClientOptions contains configuration for creating an MQTT client.
@@ -103,6 +106,10 @@ func (mb *MQTTBuilder) Client() *MQTTClient {
 
 // RegisterPublish registers a publication operation.
 func (mb *MQTTBuilder) RegisterPublish(topic string, spec PublicationSpec) error {
+	if mb.runConnectOnce.Load() {
+		return fmt.Errorf("cannot register subscription after connecting to MQTT broker")
+	}
+
 	// Validate topic
 	if err := validateTopicPattern(topic); err != nil {
 		return fmt.Errorf("invalid topic pattern: %w", err)
@@ -165,6 +172,10 @@ func (mb *MQTTBuilder) MustRegisterPublish(topic string, spec PublicationSpec) {
 
 // RegisterSubscribe registers a subscription operation.
 func (mb *MQTTBuilder) RegisterSubscribe(topic string, spec SubscriptionSpec) error {
+	if mb.runConnectOnce.Load() {
+		return fmt.Errorf("cannot register subscription after connecting to MQTT broker")
+	}
+
 	sanitizedTopic := generate.SanitizePath(topic)
 	if topic != sanitizedTopic {
 		return fmt.Errorf("invalid topic pattern: topic %q does not match sanitized form %q", topic, sanitizedTopic)
@@ -231,6 +242,8 @@ func (mb *MQTTBuilder) MustRegisterSubscribe(topic string, spec SubscriptionSpec
 
 // Connect connects to the MQTT broker.
 func (mb *MQTTBuilder) Connect() error {
+	mb.runConnectOnce.Store(true)
+
 	mb.l.Info("Connecting to MQTT broker... Will wait indefinitely for connection to complete")
 
 	token := mb.client.Connect()
