@@ -1,0 +1,16 @@
+version: "2"
+sql:
+  - engine: sqlite
+    queries: backend/internal/database/sqlite/queries
+    schema: schema.sql
+    strict_function_checks: true
+    strict_order_by: true
+    gen:
+      go:
+        package: sqlitegen
+        out: backend/internal/database/sqlite/gen
+        sql_package: database/sql
+        omit_unused_structs: true
+        emit_empty_slices: true
+        emit_sql_as_comment: true
+        query_parameter_limit: 0
