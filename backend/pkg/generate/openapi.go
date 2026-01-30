@@ -310,16 +310,27 @@ func buildAliasSchema(typeInfo *TypeInfo) (*openapi3.Schema, error) {
 		return nil, fmt.Errorf("failed to build schema for alias %s: %w", typeInfo.Name, err)
 	}
 
-	// Extract the schema from the SchemaRef
-	if schemaRef.Value == nil {
-		return nil, fmt.Errorf("alias type %s resolved to a reference schema instead of an inline schema", typeInfo.Name)
-	}
+	var schema *openapi3.Schema
 
-	schema := schemaRef.Value
+	// Handle both inline schemas and reference schemas
+	switch {
+	case schemaRef.Value != nil:
+		// Inline schema - use directly
+		schema = schemaRef.Value
 
-	// Apply type-level deprecation if set
-	if typeInfo.Deprecated != "" {
-		schema.Deprecated = true
+		// Apply type-level deprecation if set
+		if typeInfo.Deprecated != "" {
+			schema.Deprecated = true
+		}
+	case schemaRef.Ref != "":
+		// Reference schema - wrap in allOf to allow adding metadata
+		schema = &openapi3.Schema{
+			AllOf:       []*openapi3.SchemaRef{schemaRef},
+			Description: typeInfo.Description,
+			Deprecated:  typeInfo.Deprecated != "",
+		}
+	default:
+		return nil, fmt.Errorf("alias type %s resolved to invalid schema (both Value and Ref are empty)", typeInfo.Name)
 	}
 
 	return schema, nil
