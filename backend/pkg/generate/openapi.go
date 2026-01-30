@@ -464,6 +464,11 @@ func buildOperation(route *RouteInfo, types map[string]*TypeInfo) (*openapi3.Ope
 
 	// Add request body
 	if route.Request != nil {
+		// Validate that the request type is registered
+		if _, ok := types[route.Request.TypeName]; !ok {
+			return nil, fmt.Errorf("request body has unregistered type %s (not found in types map)", route.Request.TypeName)
+		}
+
 		op.RequestBody = &openapi3.RequestBodyRef{
 			Value: &openapi3.RequestBody{
 				Required:    true,
@@ -479,6 +484,11 @@ func buildOperation(route *RouteInfo, types map[string]*TypeInfo) (*openapi3.Ope
 		response := &openapi3.Response{Description: &resp.Description}
 
 		if resp.TypeName != "" {
+			// Validate that the response type is registered
+			if _, ok := types[resp.TypeName]; !ok {
+				return nil, fmt.Errorf("response for status %d has unregistered type %s (not found in types map)", statusCode, resp.TypeName)
+			}
+
 			response.Content = createJSONContent(resp.TypeName, resp.Examples)
 		}
 
