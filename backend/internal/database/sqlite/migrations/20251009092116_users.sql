@@ -1,0 +1,11 @@
+-- migrate:up
+CREATE TABLE IF NOT EXISTS "user" (
+  "id" INTEGER PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "email" TEXT NOT NULL,
+  "password" TEXT NOT NULL,
+  "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- migrate:down
+DROP TABLE IF EXISTS "user";
