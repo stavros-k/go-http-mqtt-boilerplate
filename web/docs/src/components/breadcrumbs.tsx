@@ -26,7 +26,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
                 const isLast = index === items.length - 1;
                 return (
                     <div
-                        key={item.label}
+                        key={`${item.href || item.label}-${index}`}
                         className='flex items-center gap-2'>
                         <IoChevronForward className='h-3 w-3' />
                         {item.href && !isLast ? (
