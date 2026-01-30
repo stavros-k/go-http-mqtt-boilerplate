@@ -23,6 +23,9 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(schemaOutputPath string) (stri
 	}
 
 	defer func() {
+		if err := tempDBFile.Close(); err != nil {
+			g.l.Error("failed to close temporary database file", utils.ErrAttr(err))
+		}
 		if err := os.Remove(tempDBFile.Name()); err != nil {
 			g.l.Error("failed to remove temporary database file", utils.ErrAttr(err))
 		}

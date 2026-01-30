@@ -163,8 +163,8 @@ type APIInfo struct {
 
 // ServerInfo contains server information.
 type ServerInfo struct {
-	URL         string
-	Description string
+	URL         string `json:"url"`
+	Description string `json:"description"`
 }
 
 type Database struct {
