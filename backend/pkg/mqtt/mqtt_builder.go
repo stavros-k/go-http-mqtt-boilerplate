@@ -13,8 +13,6 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-// TODO: Provide a wrapper around publish, that sets the QoS and retained flags correctly
-
 // MQTTBuilder provides a fluent API for registering MQTT publications and subscriptions.
 type MQTTBuilder struct {
 	client        mqtt.Client
