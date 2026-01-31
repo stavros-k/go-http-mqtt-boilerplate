@@ -8,14 +8,13 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
 const (
 	// OpenAPIVersion is the OpenAPI specification version used for generated specs.
-	OpenAPIVersion = "3.0.3"
+	OpenAPIVersion = "3.1.0"
 )
 
 // isPrimitiveType checks if a type name represents a valid OpenAPI primitive type.
@@ -85,41 +84,42 @@ func buildFieldSchema(field FieldInfo) (*openapi3.SchemaRef, error) {
 	return applyDeprecated(schema, field.Deprecated != "")
 }
 
-// applyNullable sets the Nullable field on a schema if needed.
-// For inline schemas (Value != nil), sets nullable directly.
-// For $ref schemas (Value == nil, Ref != ""), wraps with allOf in OpenAPI 3.0.
-// FIXME: OpenAPI 3.1 uses JSON Schema which supports type: 'null'.
-// When upgrading to OpenAPI 3.1, replace allOf+nullable pattern with anyOf containing type: 'null'.
+// applyNullable sets nullable for a schema in OpenAPI 3.1 style.
+// OpenAPI 3.1 uses JSON Schema which supports type arrays: type: [string, "null"].
+// For inline schemas with explicit type, adds "null" to the type array.
+// For references, uses oneOf: [ref, {type: "null"}].
 func applyNullable(schemaRef *openapi3.SchemaRef, nullable bool) (*openapi3.SchemaRef, error) {
 	switch {
 	case !nullable:
 		return schemaRef, nil
 	case schemaRef.Value != nil:
-		// Inline schema - set nullable directly
-		schemaRef.Value.Nullable = true
-
-		return schemaRef, nil
+		switch {
+		case schemaRef.Value.Type == nil:
+			return nil, errors.New("nullable inline schema has no type (schema generation bug)")
+		case schemaRef.Value.Type.IncludesNull():
+			return schemaRef, nil
+		default:
+			// For inline schemas with explicit type, add "null" to type array
+			*schemaRef.Value.Type = append(*schemaRef.Value.Type, "null")
+			return schemaRef, nil
+		}
 	case schemaRef.Ref != "":
-		// OpenAPI 3.0: Reference schema - must wrap with allOf
+		// For references, use oneOf (value is exactly one of: ref type or null)
+		nullType := &openapi3.SchemaRef{
+			Value: &openapi3.Schema{Type: &openapi3.Types{"null"}},
+		}
 		return &openapi3.SchemaRef{
 			Value: &openapi3.Schema{
-				AllOf:    []*openapi3.SchemaRef{schemaRef},
-				Nullable: true,
+				OneOf: []*openapi3.SchemaRef{schemaRef, nullType},
 			},
 		}, nil
-		// OpenAPI 3.1: Use anyOf with null type instead
-		// nullType := &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"null"}}}
-		// return &openapi3.SchemaRef{Value: &openapi3.Schema{AnyOf: []*openapi3.SchemaRef{schemaRef, nullType}}}
 	default:
 		return nil, errors.New("invalid schemaRef: both Value and Ref are empty")
 	}
 }
 
 // applyDeprecated sets the Deprecated field on a schema if needed.
-// For inline schemas (Value != nil), sets deprecated directly.
-// For $ref schemas (Value == nil, Ref != ""), wraps with allOf in OpenAPI 3.0.
-// FIXME: OpenAPI 3.1 allows deprecated directly on $ref without wrapping.
-// When upgrading to OpenAPI 3.1, set deprecated as a sibling to $ref instead of wrapping.
+// OpenAPI 3.1 allows deprecated as a sibling to $ref.
 func applyDeprecated(schemaRef *openapi3.SchemaRef, deprecated bool) (*openapi3.SchemaRef, error) {
 	switch {
 	case !deprecated:
@@ -127,21 +127,14 @@ func applyDeprecated(schemaRef *openapi3.SchemaRef, deprecated bool) (*openapi3.
 	case schemaRef.Value != nil:
 		// Inline schema - set deprecated directly
 		schemaRef.Value.Deprecated = true
-
 		return schemaRef, nil
 	case schemaRef.Ref != "":
-		// OpenAPI 3.0: Reference schema - must wrap with allOf
-		return &openapi3.SchemaRef{
-			Value: &openapi3.Schema{
-				AllOf:      []*openapi3.SchemaRef{schemaRef},
-				Deprecated: true,
-			},
-		}, nil
-		// OpenAPI 3.1: Can set deprecated as sibling to $ref
-		// Example approach:
-		// schemaRef.Value = &openapi3.Schema{Deprecated: true}
-		// // Keep schemaRef.Ref as is
-		// return schemaRef
+		// Reference schema - wrap in allOf to add deprecated metadata
+		schemaRef.Value = &openapi3.Schema{
+			AllOf:      []*openapi3.SchemaRef{schemaRef},
+			Deprecated: true,
+		}
+		return schemaRef, nil
 	default:
 		return nil, errors.New("invalid schemaRef: both Value and Ref are empty")
 	}
@@ -243,60 +236,45 @@ func buildSchemaFromFieldType(ft FieldType, description string) (*openapi3.Schem
 	}
 }
 
-// formatEnumValueDescription formats a single enum value for documentation.
-func formatEnumValueDescription(ev EnumValue) string {
-	switch {
-	case ev.Deprecated != "":
-		result := fmt.Sprintf("- `%v`: **[DEPRECATED]** ", ev.Value)
-		result += ev.Deprecated
-
-		if ev.Description != "" {
-			result += " - " + ev.Description
-		}
-
-		return result + "\n"
-	case ev.Description != "":
-		return fmt.Sprintf("- `%v`: %s\n", ev.Value, ev.Description)
+// getEnumType returns the OpenAPI type for the given enum kind.
+func getEnumType(typeInfo *TypeInfo) (string, error) {
+	switch typeInfo.Kind {
+	case TypeKindStringEnum:
+		return "string", nil
+	case TypeKindNumberEnum:
+		return "integer", nil
 	default:
-		return fmt.Sprintf("- `%v`\n", ev.Value)
+		return "", fmt.Errorf("unsupported enum kind: %s", typeInfo.Kind)
 	}
 }
 
-// buildEnumSchema creates an OpenAPI enum schema.
-// FIXME: Once upstream supports OpenAPI 3.1, switch to using oneOf with const.
+// buildEnumSchema creates an OpenAPI enum schema using oneOf with const values.
+// This approach provides better structured documentation where each enum value
+// can have its own description and deprecation status.
 func buildEnumSchema(typeInfo *TypeInfo) (*openapi3.Schema, error) {
-	values := make([]any, len(typeInfo.EnumValues))
-
-	var enumDesc strings.Builder
-
-	if typeInfo.Description != "" {
-		enumDesc.WriteString(typeInfo.Description)
-		enumDesc.WriteString("\n\n")
+	schemaType, err := getEnumType(typeInfo)
+	if err != nil {
+		return nil, err
 	}
 
-	enumDesc.WriteString("Possible values:\n")
+	// Build oneOf schemas, one for each enum value
+	oneOfSchemas := make([]*openapi3.SchemaRef, len(typeInfo.EnumValues))
 
 	for i, ev := range typeInfo.EnumValues {
-		values[i] = ev.Value
-		enumDesc.WriteString(formatEnumValueDescription(ev))
-	}
+		valueSchema := &openapi3.Schema{
+			Title:       fmt.Sprintf("%v", ev.Value),
+			Type:        &openapi3.Types{schemaType},
+			Const:       ev.Value,
+			Description: ev.Description,
+			Deprecated:  ev.Deprecated != "",
+		}
 
-	// Determine OpenAPI type based on enum kind
-	var schemaType string
-
-	switch typeInfo.Kind {
-	case TypeKindStringEnum:
-		schemaType = "string"
-	case TypeKindNumberEnum:
-		schemaType = "integer"
-	default:
-		return nil, fmt.Errorf("unsupported enum kind: %s", typeInfo.Kind)
+		oneOfSchemas[i] = &openapi3.SchemaRef{Value: valueSchema}
 	}
 
 	return &openapi3.Schema{
-		Type:        &openapi3.Types{schemaType},
-		Enum:        values,
-		Description: enumDesc.String(),
+		OneOf:       oneOfSchemas,
+		Description: typeInfo.Description,
 		Deprecated:  typeInfo.Deprecated != "",
 	}, nil
 }

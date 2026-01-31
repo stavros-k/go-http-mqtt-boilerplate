@@ -31,9 +31,16 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 )
+
+// Using fork with OpenAPI 3.1 support (PR #1114: https://github.com/getkin/kin-openapi/pull/1114)
+// Upstream issue #230 has been open since 2020. This fork adds:
+// - OpenAPI 3.1.0 support (type arrays, const, JSON Schema 2020-12)
+// Can be removed once upstream merges PR #1114
+replace github.com/getkin/kin-openapi => github.com/RobbertDM/kin-openapi-fork v0.0.0-20260113132111-14628ad5f844
