@@ -21,8 +21,9 @@ components:
                 url:
                     description: URL to the user
                     format: uri
-                    nullable: true
-                    type: string
+                    type:
+                        - string
+                        - "null"
                 userID:
                     description: ID of the created user
                     type: string
@@ -74,8 +75,10 @@ components:
                     description: Human-readable message
                     type: string
                 metadata:
-                    nullable: true
-                    type: string
+                    description: Metadata is an optional field
+                    type:
+                        - string
+                        - "null"
                 status:
                     $ref: '#/components/schemas/PingStatus'
             required:
@@ -83,16 +86,16 @@ components:
                 - status
             type: object
         PingStatus:
-            description: |
-                PingStatus represents the status of a ping request.
-
-                Possible values:
-                - `OK`: PingStatusOK means the ping was successful.
-                - `ERROR`: PingStatusError means there was an error with the ping.
-            enum:
-                - OK
-                - ERROR
-            type: string
+            description: PingStatus represents the status of a ping request.
+            oneOf:
+                - const: OK
+                  description: PingStatusOK means the ping was successful.
+                  title: OK
+                  type: string
+                - const: ERROR
+                  description: PingStatusError means there was an error with the ping.
+                  title: ERROR
+                  type: string
         User:
             additionalProperties: false
             description: User represents a user in the system.
@@ -112,7 +115,7 @@ info:
     description: Local API Documentation
     title: Local API
     version: vdev (unknown)
-openapi: 3.0.3
+openapi: 3.1.0
 paths:
     /api/ping:
         get:
