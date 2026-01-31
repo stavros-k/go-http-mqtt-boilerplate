@@ -25,8 +25,7 @@ import (
 	"github.com/coder/guts"
 	"github.com/coder/guts/bindings"
 	"github.com/coder/guts/config"
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/oasdiff/yaml"
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/go/packages"
@@ -305,13 +304,19 @@ func (g *OpenAPICollector) Generate() error {
 	// Compute type relationships
 	g.computeTypeRelationships()
 
-	// Generate type representations
-	if err := g.generateTypesRepresentations(); err != nil {
+	// Build OpenAPI spec first (needed for schema rendering)
+	spec, err := g.generateOpenAPISpec()
+	if err != nil {
+		return fmt.Errorf("failed to generate OpenAPI spec: %w", err)
+	}
+
+	// Generate type representations (using schemas from spec)
+	if err := g.generateTypesRepresentations(spec); err != nil {
 		return fmt.Errorf("failed to generate types representations: %w", err)
 	}
 
-	// Write OpenAPI spec
-	if err := g.writeSpecYAML(g.openAPISpecFilePath); err != nil {
+	// Write OpenAPI spec to file
+	if err := g.writeSpecYAML(spec, g.openAPISpecFilePath); err != nil {
 		return fmt.Errorf("failed to write OpenAPI spec: %w", err)
 	}
 
@@ -1403,8 +1408,8 @@ func (g *OpenAPICollector) computeTypeRelationships() {
 	g.l.Debug("Computed UsedBy relationships")
 }
 
-// generateGoRepresentations generates Go source representations for all types as a post-processing step.
-func (g *OpenAPICollector) generateTypesRepresentations() error {
+// generateTypesRepresentations generates all representations for types using the built OpenAPI spec.
+func (g *OpenAPICollector) generateTypesRepresentations(spec *v3.Document) error {
 	g.l.Debug("Generating all representations for all types", slog.Int("typeCount", len(g.types)))
 
 	for name, typeInfo := range g.types {
@@ -1424,18 +1429,18 @@ func (g *OpenAPICollector) generateTypesRepresentations() error {
 
 		typeInfo.Representations.TS = tsSource
 
-		// JSON Schema Representation
-		schema, err := toOpenAPISchema(typeInfo)
-		if err != nil {
-			return fmt.Errorf("failed to generate JSON schema for type %s: %w", name, err)
-		}
+		// JSON Schema Representation - get from spec if available
+		if spec.Components != nil && spec.Components.Schemas != nil {
+			if schemaProxy, exists := spec.Components.Schemas.Get(name); exists {
+				// Use libopenapi's built-in Render method
+				jsonBytes, err := schemaProxy.Render()
+				if err != nil {
+					return fmt.Errorf("failed to render JSON schema for type %s: %w", name, err)
+				}
 
-		jsonSchema, err := schemaToJSONString(schema)
-		if err != nil {
-			return fmt.Errorf("failed to serialize JSON schema for type %s: %w", name, err)
+				typeInfo.Representations.JSONSchema = string(jsonBytes)
+			}
 		}
-
-		typeInfo.Representations.JSONSchema = jsonSchema
 	}
 
 	g.l.Debug("All representations generated successfully")
@@ -1563,7 +1568,7 @@ func (g *OpenAPICollector) addUsage(typeName, operationID, role string) {
 }
 
 // generateOpenAPISpec generates a complete OpenAPI specification from all collected metadata.
-func (g *OpenAPICollector) generateOpenAPISpec() (*openapi3.T, error) {
+func (g *OpenAPICollector) generateOpenAPISpec() (*v3.Document, error) {
 	doc := g.getDocumentation()
 
 	spec, err := generateOpenAPISpec(doc)
@@ -1577,7 +1582,7 @@ func (g *OpenAPICollector) generateOpenAPISpec() (*openapi3.T, error) {
 	spec.Info.Description = g.apiInfo.Description
 
 	for _, server := range g.apiInfo.Servers {
-		spec.Servers = append(spec.Servers, &openapi3.Server{
+		spec.Servers = append(spec.Servers, &v3.Server{
 			URL:         server.URL,
 			Description: server.Description,
 		})
@@ -1645,16 +1650,12 @@ func generateDisplayType(ft FieldType) string {
 	}
 }
 
-// writeSpecYAML writes the OpenAPI specification to a YAML file.
-func (g *OpenAPICollector) writeSpecYAML(filename string) error {
-	spec, err := g.generateOpenAPISpec()
+// writeSpecYAML writes a pre-built OpenAPI specification to a YAML file.
+func (g *OpenAPICollector) writeSpecYAML(spec *v3.Document, filename string) error {
+	// Use libopenapi's built-in Render method
+	yamlData, err := spec.Render()
 	if err != nil {
-		return fmt.Errorf("failed to generate spec: %w", err)
-	}
-
-	yamlData, err := yaml.Marshal(spec)
-	if err != nil {
-		return err
+		return fmt.Errorf("failed to render spec: %w", err)
 	}
 
 	return os.WriteFile(filename, yamlData, 0600)
