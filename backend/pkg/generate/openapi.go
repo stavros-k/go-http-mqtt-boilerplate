@@ -262,6 +262,11 @@ func buildEnumSchema(typeInfo *TypeInfo) (*openapi3.Schema, error) {
 		return nil, err
 	}
 
+	// Guard against empty enum values to avoid producing an invalid OneOf
+	if len(typeInfo.EnumValues) == 0 {
+		return nil, fmt.Errorf("enum type %s has no enum values defined", typeInfo.Name)
+	}
+
 	// Build oneOf schemas, one for each enum value
 	oneOfSchemas := make([]*openapi3.SchemaRef, len(typeInfo.EnumValues))
 
