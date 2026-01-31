@@ -119,7 +119,10 @@ func applyNullable(schemaRef *openapi3.SchemaRef, nullable bool) (*openapi3.Sche
 }
 
 // applyDeprecated sets the Deprecated field on a schema if needed.
-// OpenAPI 3.1 allows deprecated as a sibling to $ref.
+// For inline schemas, sets deprecated directly.
+// For references, creates a new SchemaRef wrapping the original in allOf with deprecated.
+// Note: OpenAPI 3.1 allows deprecated as sibling to $ref, but kin-openapi ignores Value
+// when Ref is set during marshaling, so we create a new wrapper SchemaRef instead.
 func applyDeprecated(schemaRef *openapi3.SchemaRef, deprecated bool) (*openapi3.SchemaRef, error) {
 	switch {
 	case !deprecated:
@@ -129,12 +132,14 @@ func applyDeprecated(schemaRef *openapi3.SchemaRef, deprecated bool) (*openapi3.
 		schemaRef.Value.Deprecated = true
 		return schemaRef, nil
 	case schemaRef.Ref != "":
-		// Reference schema - wrap in allOf to add deprecated metadata
-		schemaRef.Value = &openapi3.Schema{
-			AllOf:      []*openapi3.SchemaRef{schemaRef},
-			Deprecated: true,
-		}
-		return schemaRef, nil
+		// Reference schema - create NEW SchemaRef wrapping the original in allOf
+		// Cannot mutate schemaRef.Value because Ref takes precedence during marshaling
+		return &openapi3.SchemaRef{
+			Value: &openapi3.Schema{
+				AllOf:      []*openapi3.SchemaRef{schemaRef},
+				Deprecated: true,
+			},
+		}, nil
 	default:
 		return nil, errors.New("invalid schemaRef: both Value and Ref are empty")
 	}
