@@ -10,6 +10,10 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+const (
+	sendTimeout = 10 * time.Second
+)
+
 type MQTTClient struct {
 	client  mqtt.Client
 	builder *MQTTBuilder
@@ -49,17 +53,17 @@ func (c *MQTTClient) Publish(operationID string, actualTopic string, payload any
 	)
 	token := c.client.Publish(actualTopic, byte(pub.QoS), pub.Retained, bytes)
 
-	go func() {
-		if !token.WaitTimeout(30 * time.Second) {
-			log.Warn("Publish still pending after 30s", slog.Int("qos", int(pub.QoS)))
+	if !token.WaitTimeout(sendTimeout) {
+		log.Warn("Publish still pending after 10s", slog.Int("qos", int(pub.QoS)))
 
-			return
-		}
+		return errors.New("publish timeout after 10s, might complete later if reconnecting")
+	}
 
-		if err := token.Error(); err != nil {
-			log.Error("Publish failed", utils.ErrAttr(err))
-		}
-	}()
+	if err := token.Error(); err != nil {
+		log.Error("Publish failed", utils.ErrAttr(err))
+
+		return err
+	}
 
 	return nil
 }
@@ -77,8 +81,8 @@ func (c *MQTTClient) Subscribe(operationID string) error {
 	)
 
 	token := c.client.Subscribe(sub.TopicMQTT, byte(sub.QoS), sub.Handler)
-	if !token.WaitTimeout(10 * time.Second) {
-		return errors.New("subscribe timeout")
+	if !token.WaitTimeout(sendTimeout) {
+		return errors.New("subscribe timeout after 10s, might complete later if reconnecting")
 	}
 
 	if err := token.Error(); err != nil {
