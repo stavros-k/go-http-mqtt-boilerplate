@@ -64,7 +64,7 @@ func main() {
 	// Builders
 	rb, err := router.NewRouteBuilder(logger, collector)
 	fatalIfErr(logger, err)
-	
+
 	mb, err := mqtt.NewMQTTBuilder(logger, collector, mqtt.MQTTClientOptions{
 		BrokerURL: config.MQTTBroker,
 		ClientID:  config.MQTTClientID,
@@ -77,7 +77,6 @@ func main() {
 	services := services.NewServices(logger, db, queries, mb.Client())
 	apiHandler := api.NewAPIHandler(logger, services)
 	mqttHandler := mqttapi.NewMQTTHandler(logger, services)
-
 
 	registerHTTPHandlers(logger, rb, apiHandler)
 	registerMQTTHandlers(logger, mb, mqttHandler)
