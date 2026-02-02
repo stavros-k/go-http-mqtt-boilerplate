@@ -76,7 +76,7 @@ func newMQTTClient(l *slog.Logger, opts *MQTTClientOptions, mb *MQTTBuilder) mqt
 	clientOpts.SetConnectionLostHandler(mb.onConnectionLost)
 	clientOpts.SetReconnectingHandler(mb.onReconnecting)
 	// FIXME: Uncomment this on next release
-	// clientOpts.SetLogger(l.With("component", "mqtt-client"))
+	// clientOpts.SetLogger(l.With(slog.String("component", "mqtt-client"), slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID)))
 	// FIXME: Set will message
 	// clientOpts.SetWill("", "", 2, true)
 

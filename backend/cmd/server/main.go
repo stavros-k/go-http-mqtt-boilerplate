@@ -22,7 +22,7 @@ import (
 	"syscall"
 	"time"
 
-	mqttserver "github.com/mochi-mqtt/server/v2"
+	mqttbroker "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
 
@@ -94,18 +94,17 @@ func main() {
 			logger.Error("Failed to connect to MQTT broker", utils.ErrAttr(err))
 		}
 	}()
-	defer mb.Disconnect()
 
-	//  MQTT server
+	//  MQTT Broker
 	mqttAddr := fmt.Sprintf(":%d", config.MQTTBrokerPort)
-	mqttServer, err := getMQTTServer(logger, mqttAddr)
+	mqttBroker, err := getMQTTServer(logger, mqttAddr)
 	fatalIfErr(logger, err)
 
 	go func() {
-		logger.Info("MQTT server listening", slog.String("address", mqttAddr))
+		logger.Info("MQTT broker listening", slog.String("address", mqttAddr))
 
-		if err := mqttServer.Serve(); err != nil {
-			logger.Error("MQTT server failed", utils.ErrAttr(err))
+		if err := mqttBroker.Serve(); err != nil {
+			logger.Error("MQTT broker failed", utils.ErrAttr(err))
 			sigCancel()
 		}
 	}()
@@ -139,18 +138,21 @@ func main() {
 		logger.Error("http server shutdown failed", utils.ErrAttr(err))
 	}
 
-	// Shutdown MQTT server
-	logger.Info("mqtt server shutting down...")
-	if err := mqttServer.Close(); err != nil {
-		logger.Error("mqtt server shutdown failed", utils.ErrAttr(err))
+	logger.Info("disconnecting from MQTT broker...")
+	mb.Disconnect()
+
+	// Shutdown MQTT broker
+	logger.Info("mqtt broker shutting down...")
+	if err := mqttBroker.Close(); err != nil {
+		logger.Error("mqtt broker shutdown failed", utils.ErrAttr(err))
 	}
 
 	logger.Info("server exited gracefully")
 }
 
-func getMQTTServer(l *slog.Logger, addr string) (*mqttserver.Server, error) {
-	server := mqttserver.New(&mqttserver.Options{
-		Logger: l.With("component", "mqtt-server"),
+func getMQTTServer(l *slog.Logger, addr string) (*mqttbroker.Server, error) {
+	server := mqttbroker.New(&mqttbroker.Options{
+		Logger: l.With(slog.String("component", "mqtt-broker")),
 	})
 	tcp := listeners.NewTCP(listeners.Config{ID: "tcp", Address: addr})
 	err := server.AddListener(tcp)
