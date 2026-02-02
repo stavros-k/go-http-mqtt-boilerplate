@@ -7,193 +7,6 @@ servers:
     - url: http://localhost:8080
       description: Local server
 paths:
-    /api/team:
-        put:
-            tags:
-                - Team
-            summary: Create a team
-            description: Create a team by its name
-            operationId: putTeam
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/CreateTeamRequest'
-                        examples:
-                            example-1:
-                                value:
-                                    name: My Team
-                required: true
-            responses:
-                "413":
-                    description: Request entity too large
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorResponse'
-                            examples:
-                                Request Entity Too Large:
-                                    value:
-                                        message: Request body too large (max 1MB)
-                                        requestID: 00000000-0000-0000-0000-000000000000
-                "500":
-                    description: Internal Server Error
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorResponse'
-                            examples:
-                                Internal Server Error:
-                                    value:
-                                        message: Internal Server Error
-                                        requestID: 00000000-0000-0000-0000-000000000000
-                "200":
-                    description: Successful ping response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PingResponse'
-                            examples:
-                                example-1:
-                                    value:
-                                        message: Pong
-                                        status: OK
-                "400":
-                    description: Invalid request
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/CreateUserResponse'
-                            examples:
-                                example-1:
-                                    value:
-                                        createdAt: "0001-01-01T00:00:00Z"
-                                        url: https://localhost:8080/user
-                                        userID: "123"
-        post:
-            tags:
-                - Team
-            summary: Create a team
-            description: Create a team by its name
-            operationId: createTeam
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/CreateTeamRequest'
-                        examples:
-                            example-1:
-                                value:
-                                    name: My Team
-                required: true
-            responses:
-                "200":
-                    description: Successful ping response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PingResponse'
-                            examples:
-                                example-1:
-                                    value:
-                                        message: Pong
-                                        status: OK
-                "400":
-                    description: Invalid request
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/CreateUserResponse'
-                            examples:
-                                example-1:
-                                    value:
-                                        createdAt: "0001-01-01T00:00:00Z"
-                                        url: https://localhost:8080/user
-                                        userID: "123"
-                "413":
-                    description: Request entity too large
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorResponse'
-                            examples:
-                                Request Entity Too Large:
-                                    value:
-                                        message: Request body too large (max 1MB)
-                                        requestID: 00000000-0000-0000-0000-000000000000
-                "500":
-                    description: Internal Server Error
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorResponse'
-                            examples:
-                                Internal Server Error:
-                                    value:
-                                        message: Internal Server Error
-                                        requestID: 00000000-0000-0000-0000-000000000000
-        delete:
-            tags:
-                - Team
-            summary: Create a team
-            description: Create a team by its name
-            operationId: deleteTeam
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/CreateTeamRequest'
-                        examples:
-                            example-1:
-                                value:
-                                    name: My Team
-                required: true
-            responses:
-                "413":
-                    description: Request entity too large
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorResponse'
-                            examples:
-                                Request Entity Too Large:
-                                    value:
-                                        message: Request body too large (max 1MB)
-                                        requestID: 00000000-0000-0000-0000-000000000000
-                "500":
-                    description: Internal Server Error
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorResponse'
-                            examples:
-                                Internal Server Error:
-                                    value:
-                                        message: Internal Server Error
-                                        requestID: 00000000-0000-0000-0000-000000000000
-                "200":
-                    description: Successful ping response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PingResponse'
-                            examples:
-                                example-1:
-                                    value:
-                                        message: Pong
-                                        status: OK
-                "400":
-                    description: Invalid request
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/CreateUserResponse'
-                            examples:
-                                example-1:
-                                    value:
-                                        createdAt: "0001-01-01T00:00:00Z"
-                                        url: https://localhost:8080/user
-                                        userID: "123"
     /api/ping:
         get:
             tags:
@@ -202,17 +15,6 @@ paths:
             description: Check if the server is alive
             operationId: ping
             responses:
-                "500":
-                    description: Internal server error
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PingResponse'
-                            examples:
-                                Database unreachable:
-                                    value:
-                                        message: Database unreachable
-                                        status: ERROR
                 "413":
                     description: Request entity too large
                     content:
@@ -235,6 +37,17 @@ paths:
                                     value:
                                         message: Pong
                                         status: OK
+                "500":
+                    description: Internal server error
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PingResponse'
+                            examples:
+                                Database unreachable:
+                                    value:
+                                        message: Database unreachable
+                                        status: ERROR
     /api/team/{teamID}:
         get:
             tags:
@@ -250,30 +63,6 @@ paths:
                   schema:
                     type: string
             responses:
-                "200":
-                    description: Successful ping response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PingResponse'
-                            examples:
-                                example-1:
-                                    value:
-                                        message: Pong
-                                        status: OK
-                "201":
-                    description: Successful ping response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/GetTeamResponse'
-                            examples:
-                                example-1:
-                                    value:
-                                        teamID: "123"
-                                        users:
-                                            - name: John
-                                              userID: "123"
                 "400":
                     description: Invalid request
                     content:
@@ -308,9 +97,263 @@ paths:
                                     value:
                                         message: Internal Server Error
                                         requestID: 00000000-0000-0000-0000-000000000000
+                "200":
+                    description: Successful ping response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PingResponse'
+                            examples:
+                                example-1:
+                                    value:
+                                        message: Pong
+                                        status: OK
+                "201":
+                    description: Successful ping response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetTeamResponse'
+                            examples:
+                                example-1:
+                                    value:
+                                        teamID: "123"
+                                        users:
+                                            - name: John
+                                              userID: "123"
             deprecated: true
+    /api/team:
+        put:
+            tags:
+                - Team
+            summary: Create a team
+            description: Create a team by its name
+            operationId: putTeam
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateTeamRequest'
+                        examples:
+                            example-1:
+                                value:
+                                    name: My Team
+                required: true
+            responses:
+                "200":
+                    description: Successful ping response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PingResponse'
+                            examples:
+                                example-1:
+                                    value:
+                                        message: Pong
+                                        status: OK
+                "400":
+                    description: Invalid request
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateUserResponse'
+                            examples:
+                                example-1:
+                                    value:
+                                        createdAt: "0001-01-01T00:00:00Z"
+                                        url: https://localhost:8080/user
+                                        userID: "123"
+                "413":
+                    description: Request entity too large
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                            examples:
+                                Request Entity Too Large:
+                                    value:
+                                        message: Request body too large (max 1MB)
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                "500":
+                    description: Internal Server Error
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                            examples:
+                                Internal Server Error:
+                                    value:
+                                        message: Internal Server Error
+                                        requestID: 00000000-0000-0000-0000-000000000000
+        post:
+            tags:
+                - Team
+            summary: Create a team
+            description: Create a team by its name
+            operationId: createTeam
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateTeamRequest'
+                        examples:
+                            example-1:
+                                value:
+                                    name: My Team
+                required: true
+            responses:
+                "400":
+                    description: Invalid request
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateUserResponse'
+                            examples:
+                                example-1:
+                                    value:
+                                        createdAt: "0001-01-01T00:00:00Z"
+                                        url: https://localhost:8080/user
+                                        userID: "123"
+                "413":
+                    description: Request entity too large
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                            examples:
+                                Request Entity Too Large:
+                                    value:
+                                        message: Request body too large (max 1MB)
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                "500":
+                    description: Internal Server Error
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                            examples:
+                                Internal Server Error:
+                                    value:
+                                        message: Internal Server Error
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                "200":
+                    description: Successful ping response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PingResponse'
+                            examples:
+                                example-1:
+                                    value:
+                                        message: Pong
+                                        status: OK
+        delete:
+            tags:
+                - Team
+            summary: Create a team
+            description: Create a team by its name
+            operationId: deleteTeam
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateTeamRequest'
+                        examples:
+                            example-1:
+                                value:
+                                    name: My Team
+                required: true
+            responses:
+                "400":
+                    description: Invalid request
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateUserResponse'
+                            examples:
+                                example-1:
+                                    value:
+                                        createdAt: "0001-01-01T00:00:00Z"
+                                        url: https://localhost:8080/user
+                                        userID: "123"
+                "413":
+                    description: Request entity too large
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                            examples:
+                                Request Entity Too Large:
+                                    value:
+                                        message: Request body too large (max 1MB)
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                "500":
+                    description: Internal Server Error
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                            examples:
+                                Internal Server Error:
+                                    value:
+                                        message: Internal Server Error
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                "200":
+                    description: Successful ping response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PingResponse'
+                            examples:
+                                example-1:
+                                    value:
+                                        message: Pong
+                                        status: OK
 components:
     schemas:
+        User:
+            type: object
+            properties:
+                userID:
+                    type: string
+                    description: ID of the user
+                name:
+                    type: string
+                    description: Name of the user
+                    deprecated: true
+            required:
+                - userID
+                - name
+            additionalProperties: false
+            description: User represents a user in the system.
+        GetTeamResponse:
+            type: object
+            properties:
+                teamID:
+                    type: string
+                    description: ID of the team
+                users:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/User'
+                    description: Users in the team
+            required:
+                - teamID
+                - users
+            additionalProperties: false
+            description: GetTeamResponse is the response to a get team request.
+            deprecated: true
+        PingStatus:
+            oneOf:
+                - type: string
+                  title: OK
+                  description: PingStatusOK means the ping was successful.
+                  const: OK
+                - type: string
+                  title: ERROR
+                  description: PingStatusError means there was an error with the ping.
+                  const: ERROR
+            description: PingStatus represents the status of a ping request.
         ErrorResponse:
             type: object
             properties:
@@ -330,27 +373,6 @@ components:
                 - message
             additionalProperties: false
             description: ErrorResponse is the unified error response type. It supports both simple errors (just message) and validation errors (message + field errors).
-        PingStatus:
-            oneOf:
-                - type: string
-                  title: OK
-                  description: PingStatusOK means the ping was successful.
-                  const: OK
-                - type: string
-                  title: ERROR
-                  description: PingStatusError means there was an error with the ping.
-                  const: ERROR
-            description: PingStatus represents the status of a ping request.
-        CreateTeamRequest:
-            type: object
-            properties:
-                name:
-                    type: string
-                    description: Name of the team to create
-            required:
-                - name
-            additionalProperties: false
-            description: CreateTeamRequest is the request to create a new team.
         PingResponse:
             type: object
             properties:
@@ -364,31 +386,15 @@ components:
                         - string
                         - "null"
                 test:
-                    anyOf:
+                    oneOf:
                         - $ref: '#/components/schemas/PingStatus'
                         - type: "null"
+                    deprecated: true
             required:
                 - message
                 - status
             additionalProperties: false
             description: PingResponse is the response to a ping request.
-        GetTeamResponse:
-            type: object
-            properties:
-                teamID:
-                    type: string
-                    description: ID of the team
-                users:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/User'
-                    description: Users in the team
-            required:
-                - teamID
-                - users
-            additionalProperties: false
-            description: GetTeamResponse is the response to a get team request.
-            deprecated: true
         CreateUserResponse:
             type: object
             properties:
@@ -410,18 +416,13 @@ components:
                 - createdAt
             additionalProperties: false
             description: CreateUserResponse is the response to a create user request.
-        User:
+        CreateTeamRequest:
             type: object
             properties:
-                userID:
-                    type: string
-                    description: ID of the user
                 name:
                     type: string
-                    description: Name of the user
-                    deprecated: true
+                    description: Name of the team to create
             required:
-                - userID
                 - name
             additionalProperties: false
-            description: User represents a user in the system.
+            description: CreateTeamRequest is the request to create a new team.

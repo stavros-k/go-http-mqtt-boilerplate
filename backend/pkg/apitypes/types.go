@@ -44,9 +44,10 @@ type PingResponse struct {
 	// Human-readable message
 	Message string `json:"message"`
 	// Status of the ping
-	Status   PingStatus  `json:"status"`
-	Metadata *string     `json:"metadata,omitempty"`
-	Test     *PingStatus `json:"test,omitempty"`
+	Status   PingStatus `json:"status"`
+	Metadata *string    `json:"metadata,omitempty"`
+	// Deprecated: use Test instead
+	Test PingStatus `json:"test,omitempty"`
 }
 
 // PingStatus represents the status of a ping request.

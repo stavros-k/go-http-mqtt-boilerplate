@@ -1,7 +1,6 @@
 package generate
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"http-mqtt-boilerplate/backend/pkg/utils"
@@ -18,31 +17,61 @@ import (
 const (
 	// OpenAPIVersion is the OpenAPI specification version used for generated specs.
 	OpenAPIVersion = "3.1.0"
-
-	dynamicValueA = 0
-	dynamicValueB = 1
 )
 
-// newDynamicValueA creates a DynamicValue holding a schema (type A).
-// Examples:
-//   - items: { type: string } for arrays
-//   - additionalProperties: { type: string } for maps
-func newDynamicValueA[A, B any](a A) *base.DynamicValue[A, B] {
-	return &base.DynamicValue[A, B]{
-		N: dynamicValueA,
-		A: a,
+// arrayItems creates a DynamicValue for array items with a schema.
+// Usage: schema.Items = arrayItems(itemSchema)
+// Generates: items: { type: string }
+func arrayItems(schema *base.SchemaProxy) *base.DynamicValue[*base.SchemaProxy, bool] {
+	return &base.DynamicValue[*base.SchemaProxy, bool]{
+		N: 0, // Use schema (type A)
+		A: schema,
 	}
 }
 
-// newDynamicValueB creates a DynamicValue holding a boolean (type B).
-// Examples:
-//   - additionalProperties: false (no extra properties allowed)
-//   - additionalProperties: true (any extra properties allowed)
-func newDynamicValueB[A, B any](b B) *base.DynamicValue[A, B] {
-	return &base.DynamicValue[A, B]{
-		N: dynamicValueB,
-		B: b,
+// additionalPropertiesSchema creates a DynamicValue for map additional properties with a schema.
+// Usage: schema.AdditionalProperties = additionalPropertiesSchema(valueSchema)
+// Generates: additionalProperties: { type: string }
+func additionalPropertiesSchema(schema *base.SchemaProxy) *base.DynamicValue[*base.SchemaProxy, bool] {
+	return &base.DynamicValue[*base.SchemaProxy, bool]{
+		N: 0, // Use schema (type A)
+		A: schema,
 	}
+}
+
+// noAdditionalProperties creates a DynamicValue that disallows additional properties.
+// Usage: schema.AdditionalProperties = noAdditionalProperties()
+// Generates: additionalProperties: false
+func noAdditionalProperties() *base.DynamicValue[*base.SchemaProxy, bool] {
+	return &base.DynamicValue[*base.SchemaProxy, bool]{
+		N: 1, // Use boolean (type B)
+		B: false,
+	}
+}
+
+// toYAMLNode converts a Go value to yaml.Node, respecting json struct tags.
+// Always marshals through JSON to ensure consistent behavior for both
+// primitives and structs, and to properly handle json:"-" and field name mappings.
+func toYAMLNode(v any) (*yaml.Node, error) {
+	// Marshal to JSON to respect json tags
+	jsonBytes, err := utils.ToJSON(v)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal to JSON: %w", err)
+	}
+
+	// Unmarshal to intermediate to get clean structure
+	intermediate, err := utils.FromJSON[any](jsonBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal from JSON: %w", err)
+	}
+
+	// Encode to yaml.Node
+	node := &yaml.Node{}
+	if err := node.Encode(intermediate); err != nil {
+		return nil, fmt.Errorf("failed to encode to YAML node: %w", err)
+	}
+
+	return node, nil
 }
 
 // isPrimitiveType checks if a type name represents a valid OpenAPI primitive type.
@@ -81,7 +110,7 @@ func buildObjectSchema(typeInfo *TypeInfo) (*base.Schema, error) {
 	}
 
 	// Structured objects should not allow additional properties
-	schema.AdditionalProperties = newDynamicValueB[*base.SchemaProxy](false)
+	schema.AdditionalProperties = noAdditionalProperties()
 
 	for _, field := range typeInfo.Fields {
 		fieldSchema, err := buildFieldSchema(field)
@@ -214,7 +243,7 @@ func buildArraySchemaFromFieldType(ft FieldType, description string) (*base.Sche
 
 	schema := &base.Schema{
 		Type:        []string{"array"},
-		Items:       newDynamicValueA[*base.SchemaProxy, bool](itemSchema),
+		Items:       arrayItems(itemSchema),
 		Description: description,
 	}
 
@@ -237,7 +266,7 @@ func buildObjectSchemaFromFieldType(ft FieldType, description string) (*base.Sch
 		Description: description,
 	}
 
-	schema.AdditionalProperties = newDynamicValueB[*base.SchemaProxy](false)
+	schema.AdditionalProperties = noAdditionalProperties()
 
 	// Handle additionalProperties for map types
 	if ft.AdditionalProperties != nil {
@@ -246,7 +275,7 @@ func buildObjectSchemaFromFieldType(ft FieldType, description string) (*base.Sch
 			return nil, fmt.Errorf("failed to build additionalProperties schema: %w", err)
 		}
 
-		schema.AdditionalProperties = newDynamicValueA[*base.SchemaProxy, bool](additionalPropsSchema)
+		schema.AdditionalProperties = additionalPropertiesSchema(additionalPropsSchema)
 	}
 
 	schemaProxy := base.CreateSchemaProxy(schema)
@@ -296,8 +325,8 @@ func buildEnumSchema(typeInfo *TypeInfo) (*base.Schema, error) {
 
 	for i, ev := range typeInfo.EnumValues {
 		// Convert value to yaml.Node for const
-		constNode := &yaml.Node{}
-		if err := constNode.Encode(ev.Value); err != nil {
+		constNode, err := toYAMLNode(ev.Value)
+		if err != nil {
 			return nil, fmt.Errorf("failed to encode enum value: %w", err)
 		}
 
@@ -592,22 +621,9 @@ func convertExamplesToOpenAPI(examples map[string]any) (*orderedmap.Map[string, 
 
 	result := orderedmap.New[string, *base.Example]()
 	for name, value := range examples {
-		// Marshal through JSON first to respect json tags (not yaml field names)
-		jsonBytes, err := json.Marshal(value)
+		node, err := toYAMLNode(value)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal example %q to JSON: %w", name, err)
-		}
-
-		// Unmarshal into a generic map to get clean structure
-		var intermediate any
-		if err := json.Unmarshal(jsonBytes, &intermediate); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal example %q from JSON: %w", name, err)
-		}
-
-		// Now encode to yaml.Node (this will use proper YAML structure)
-		node := &yaml.Node{}
-		if err := node.Encode(intermediate); err != nil {
-			return nil, fmt.Errorf("failed to encode example %q to YAML node: %w", name, err)
+			return nil, fmt.Errorf("failed to encode example %q: %w", name, err)
 		}
 
 		result.Set(name, &base.Example{Value: node})
