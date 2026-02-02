@@ -27,17 +27,9 @@ type MQTTBuilder struct {
 	runConnectOnce atomic.Bool
 }
 
-// MQTTClientOptions contains configuration for creating an MQTT client.
-type MQTTClientOptions struct {
-	BrokerURL string
-	ClientID  string
-	Username  string
-	Password  string
-}
-
 // NewMQTTBuilder creates a new MQTT builder with the given broker configuration.
 func NewMQTTBuilder(l *slog.Logger, collector generate.MQTTMetadataCollector, opts MQTTClientOptions) (*MQTTBuilder, error) {
-	l = l.With(slog.String("component", "mqtt-builder"))
+	mqttBuilderLogger := l.With(slog.String("component", "mqtt-builder"))
 
 	if opts.BrokerURL == "" {
 		return nil, errors.New("broker URL is required")
@@ -49,50 +41,17 @@ func NewMQTTBuilder(l *slog.Logger, collector generate.MQTTMetadataCollector, op
 
 	mb := &MQTTBuilder{
 		collector:     collector,
-		l:             l,
+		l:             mqttBuilderLogger,
 		operationIDs:  make(map[string]struct{}),
 		publications:  make(map[string]*PublicationSpec),
 		subscriptions: make(map[string]*SubscriptionSpec),
 		connected:     false,
 	}
 
-	// Configure MQTT client options
-	// TODO: Check this
-	clientOpts := mqtt.NewClientOptions()
-	clientOpts.AddBroker(opts.BrokerURL)
-	clientOpts.SetClientID(opts.ClientID)
+	mb.client = newMQTTClient(l, &opts, mb)
+	mb.wrappedClient = &MQTTClient{client: mb.client, builder: mb}
 
-	if opts.Username != "" {
-		clientOpts.SetUsername(opts.Username)
-	}
-
-	if opts.Password != "" {
-		clientOpts.SetPassword(opts.Password)
-	}
-
-	// Retry every 5 seconds, max interval 15 seconds
-	clientOpts.SetAutoReconnect(true)
-	clientOpts.SetConnectRetry(true)
-	clientOpts.SetConnectTimeout(5 * time.Second)
-	clientOpts.SetConnectRetryInterval(5 * time.Second)
-	clientOpts.SetMaxReconnectInterval(15 * time.Second)
-	clientOpts.SetKeepAlive(30 * time.Second)
-
-	// Set connection callbacks
-	clientOpts.SetOnConnectHandler(mb.onConnect)
-	clientOpts.SetConnectionLostHandler(mb.onConnectionLost)
-	clientOpts.SetReconnectingHandler(mb.onReconnecting)
-
-	// FIXME: Set will message
-	// clientOpts.SetWill("", "", 2, true)
-
-	mb.client = mqtt.NewClient(clientOpts)
-	mb.wrappedClient = &MQTTClient{
-		client:  mb.client,
-		builder: mb,
-	}
-
-	l.Info("MQTT builder created", slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID))
+	mqttBuilderLogger.Info("MQTT builder created", slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID))
 
 	return mb, nil
 }

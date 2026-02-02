@@ -3,27 +3,44 @@ package services
 import (
 	"context"
 	"database/sql"
+	"http-mqtt-boilerplate/backend/pkg/mqtt"
 	"log/slog"
 )
 
 type CoreService struct {
-	l  *slog.Logger
-	db *sql.DB
+	l    *slog.Logger
+	mqtt *mqtt.MQTTClient
+	db   *sql.DB
 }
 
-func NewCoreService(l *slog.Logger, db *sql.DB) *CoreService {
+func NewCoreService(l *slog.Logger, mqttClient *mqtt.MQTTClient, db *sql.DB) *CoreService {
 	return &CoreService{
-		l:  l.With(slog.String("service", "core")),
-		db: db,
+		l:    l.With(slog.String("service", "core")),
+		mqtt: mqttClient,
+		db:   db,
 	}
 }
 
-func (s *CoreService) Ping(ctx context.Context) bool {
+type HealthStatus struct {
+	Database bool
+	MQTT     bool
+}
+
+func (s *CoreService) Health(ctx context.Context) HealthStatus {
+	status := HealthStatus{
+		Database: true,
+		MQTT:     true,
+	}
+
 	if err := s.db.PingContext(ctx); err != nil {
 		s.l.Error("database unreachable", slog.String("error", err.Error()))
-
-		return false
+		status.Database = false
 	}
 
-	return true
+	if !s.mqtt.IsConnected() {
+		s.l.Error("mqtt broker unreachable")
+		status.MQTT = false
+	}
+
+	return status
 }

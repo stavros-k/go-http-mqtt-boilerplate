@@ -39,6 +39,14 @@ func (e *ErrorResponse) AddError(field, message string) *ErrorResponse {
 	return e
 }
 
+// HealthResponse is the response to a health check request.
+type HealthResponse struct {
+	// Status of the database connection
+	Database bool `json:"database"`
+	// Status of the MQTT broker connection
+	MQTT bool `json:"mqtt"`
+}
+
 // PingResponse is the response to a ping request.
 type PingResponse struct {
 	// Human-readable message

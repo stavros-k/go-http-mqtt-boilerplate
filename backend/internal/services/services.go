@@ -13,14 +13,10 @@ type Services struct {
 	Core       *CoreService
 }
 
-func NewServices(l *slog.Logger, db *sql.DB, queries *sqlitegen.Queries) *Services {
+func NewServices(l *slog.Logger, db *sql.DB, queries *sqlitegen.Queries, mqttClient *mqtt.MQTTClient) *Services {
 	return &Services{
-		l:    l.With(slog.String("module", "services")),
-		Core: NewCoreService(l, db),
+		l:          l.With(slog.String("module", "services")),
+		mqttClient: mqttClient,
+		Core:       NewCoreService(l, mqttClient, db),
 	}
-}
-
-// RegisterMQTTClient registers the MQTT client with the services.
-func (s *Services) RegisterMQTTClient(client *mqtt.MQTTClient) {
-	s.mqttClient = client
 }

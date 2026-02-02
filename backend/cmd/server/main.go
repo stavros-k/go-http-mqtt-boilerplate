@@ -54,18 +54,17 @@ func main() {
 	defer utils.LogOnError(logger, db.Close, "failed to close database")
 
 	queries := sqlitegen.New(db)
-	services := services.NewServices(logger, db, queries)
-	apiHandler := api.NewAPIHandler(logger, services)
-	mqttHandler := mqttapi.NewMQTTHandler(logger, services)
 
 	// Create collector for OpenAPI generation
 	collector, err := getCollector(config, logger)
 	fatalIfErr(logger, err)
 
+	// Create MQTT builder first, before services
+
 	// Builders
 	rb, err := router.NewRouteBuilder(logger, collector)
 	fatalIfErr(logger, err)
-
+	
 	mb, err := mqtt.NewMQTTBuilder(logger, collector, mqtt.MQTTClientOptions{
 		BrokerURL: config.MQTTBroker,
 		ClientID:  config.MQTTClientID,
@@ -74,7 +73,11 @@ func main() {
 	})
 	fatalIfErr(logger, err)
 
-	services.RegisterMQTTClient(mb.Client())
+	// Now create services with the initialized MQTT client
+	services := services.NewServices(logger, db, queries, mb.Client())
+	apiHandler := api.NewAPIHandler(logger, services)
+	mqttHandler := mqttapi.NewMQTTHandler(logger, services)
+
 
 	registerHTTPHandlers(logger, rb, apiHandler)
 	registerMQTTHandlers(logger, mb, mqttHandler)
@@ -172,6 +175,8 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *api.Handle
 		rb.Use(h.LoggerMiddleware)
 
 		h.RegisterPing("/ping", rb)
+		h.RegisterHealth("/health", rb)
+
 		rb.Route("/team", func(rb *router.RouteBuilder) {
 			h.RegisterGetTeam("/{teamID}", rb)
 			h.RegisterPutTeam("/", rb)

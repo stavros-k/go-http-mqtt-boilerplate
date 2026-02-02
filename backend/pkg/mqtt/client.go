@@ -3,6 +3,8 @@ package mqtt
 import (
 	"fmt"
 	"http-mqtt-boilerplate/backend/pkg/utils"
+	"log/slog"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
@@ -33,4 +35,50 @@ func (c *MQTTClient) Publish(operationID string, actualTopic string, payload any
 	}
 
 	return nil
+}
+
+func (c *MQTTClient) IsConnected() bool {
+	return c.client.IsConnectionOpen()
+}
+
+// MQTTClientOptions contains configuration for creating an MQTT client.
+type MQTTClientOptions struct {
+	BrokerURL string
+	ClientID  string
+	Username  string
+	Password  string
+}
+
+func newMQTTClient(l *slog.Logger, opts *MQTTClientOptions, mb *MQTTBuilder) mqtt.Client {
+	// TODO: Check this
+	clientOpts := mqtt.NewClientOptions()
+	clientOpts.AddBroker(opts.BrokerURL)
+	clientOpts.SetClientID(opts.ClientID)
+
+	if opts.Username != "" {
+		clientOpts.SetUsername(opts.Username)
+	}
+
+	if opts.Password != "" {
+		clientOpts.SetPassword(opts.Password)
+	}
+
+	// Retry every 5 seconds, max interval 15 seconds
+	clientOpts.SetAutoReconnect(true)
+	clientOpts.SetConnectRetry(true)
+	clientOpts.SetConnectTimeout(5 * time.Second)
+	clientOpts.SetConnectRetryInterval(5 * time.Second)
+	clientOpts.SetMaxReconnectInterval(15 * time.Second)
+	clientOpts.SetKeepAlive(30 * time.Second)
+
+	// Set connection callbacks
+	clientOpts.SetOnConnectHandler(mb.onConnect)
+	clientOpts.SetConnectionLostHandler(mb.onConnectionLost)
+	clientOpts.SetReconnectingHandler(mb.onReconnecting)
+	// FIXME: Uncomment this on next release
+	// clientOpts.SetLogger(l.With("component", "mqtt-client"))
+	// FIXME: Set will message
+	// clientOpts.SetWill("", "", 2, true)
+
+	return mqtt.NewClient(clientOpts)
 }
