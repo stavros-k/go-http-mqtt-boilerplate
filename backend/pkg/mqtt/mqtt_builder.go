@@ -48,8 +48,8 @@ func NewMQTTBuilder(l *slog.Logger, collector generate.MQTTMetadataCollector, op
 		connected:     false,
 	}
 
-	mb.client = newMQTTClient(l, &opts, mb)
-	mb.wrappedClient = NewMQTTClient(l, mb.client, mb)
+	mb.client = newLowLevelMQTTClient(l, &opts, mb)
+	mb.wrappedClient = newWrappedMQTTClient(l, mb.client, mb)
 
 	mqttBuilderLogger.Info("MQTT builder created", slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID))
 

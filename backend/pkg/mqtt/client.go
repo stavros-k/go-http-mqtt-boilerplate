@@ -16,7 +16,7 @@ type MQTTClient struct {
 	l       *slog.Logger
 }
 
-func NewMQTTClient(l *slog.Logger, client mqtt.Client, builder *MQTTBuilder) *MQTTClient {
+func newWrappedMQTTClient(l *slog.Logger, client mqtt.Client, builder *MQTTBuilder) *MQTTClient {
 	return &MQTTClient{
 		client:  client,
 		builder: builder,
@@ -95,14 +95,14 @@ type MQTTClientOptions struct {
 	Password  string
 }
 
-func newMQTTClient(l *slog.Logger, opts *MQTTClientOptions, mb *MQTTBuilder) mqtt.Client {
+func newLowLevelMQTTClient(l *slog.Logger, opts *MQTTClientOptions, mb *MQTTBuilder) mqtt.Client {
 	logger := l.With(
 		slog.String("component", "mqtt-client"),
 		slog.String("broker", opts.BrokerURL),
 		slog.String("clientID", opts.ClientID),
 	)
 	logger.Info("Creating new MQTT client")
-	// TODO: Check this
+
 	clientOpts := mqtt.NewClientOptions()
 	// FIXME: Uncomment this on next release
 	// clientOpts.SetLogger(logger)
