@@ -40,6 +40,7 @@ func (s *Handler) Health(w http.ResponseWriter, r *http.Request) error {
 		Database: status.Database,
 		MQTT:     status.MQTT,
 	}
+
 	code := http.StatusOK
 	if !status.Database || !status.MQTT {
 		code = http.StatusServiceUnavailable

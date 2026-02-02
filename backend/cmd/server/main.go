@@ -132,8 +132,10 @@ func main() {
 
 	// Shutdown HTTP server
 	logger.Info("http server shutting down...")
+
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
+
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		logger.Error("http server shutdown failed", utils.ErrAttr(err))
 	}
@@ -143,6 +145,7 @@ func main() {
 
 	// Shutdown MQTT broker
 	logger.Info("mqtt broker shutting down...")
+
 	if err := mqttBroker.Close(); err != nil {
 		logger.Error("mqtt broker shutdown failed", utils.ErrAttr(err))
 	}
@@ -155,10 +158,12 @@ func getMQTTServer(l *slog.Logger, addr string) (*mqttbroker.Server, error) {
 		Logger: l.With(slog.String("component", "mqtt-broker")),
 	})
 	tcp := listeners.NewTCP(listeners.Config{ID: "tcp", Address: addr})
+
 	err := server.AddListener(tcp)
 	if err != nil {
 		return nil, err
 	}
+
 	if err := server.AddHook(new(auth.AllowHook), nil); err != nil {
 		return nil, err
 	}

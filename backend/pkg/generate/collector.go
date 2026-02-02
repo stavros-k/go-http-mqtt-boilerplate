@@ -331,6 +331,7 @@ func (g *OpenAPICollector) Generate() error {
 	}
 
 	g.l.Info("API documentation generated")
+
 	return nil
 }
 
@@ -402,6 +403,7 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 		if !reflect.ValueOf(response.TypeValue).IsZero() {
 			return fmt.Errorf("response Type must be zero value in route [%s]", route.OperationID)
 		}
+
 		resp := response
 
 		typeName, stringifiedExamples, err := g.processHTTPType(resp.TypeValue, resp.Examples, "response")
@@ -590,7 +592,7 @@ func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeVal
 func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
 	for _, ex := range examples {
 		if reflect.ValueOf(ex).IsZero() {
-			return fmt.Errorf("value for example should not be zero value")
+			return errors.New("value for example should not be zero value")
 		}
 
 		if err := g.RegisterJSONRepresentation(ex); err != nil {

@@ -34,11 +34,13 @@ func (s *CoreService) Health(ctx context.Context) HealthStatus {
 
 	if err := s.db.PingContext(ctx); err != nil {
 		s.l.Error("database unreachable", slog.String("error", err.Error()))
+
 		status.Database = false
 	}
 
 	if !s.mqtt.IsConnected() {
 		s.l.Error("mqtt broker unreachable")
+
 		status.MQTT = false
 	}
 

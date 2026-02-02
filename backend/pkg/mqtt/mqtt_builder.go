@@ -64,7 +64,7 @@ func (mb *MQTTBuilder) Client() *MQTTClient {
 // RegisterPublish registers a publication operation.
 func (mb *MQTTBuilder) RegisterPublish(topic string, spec PublicationSpec) error {
 	if mb.runConnectOnce.Load() {
-		return fmt.Errorf("cannot register subscription after connecting to MQTT broker")
+		return errors.New("cannot register subscription after connecting to MQTT broker")
 	}
 
 	// Validate topic
@@ -130,7 +130,7 @@ func (mb *MQTTBuilder) MustRegisterPublish(topic string, spec PublicationSpec) {
 // RegisterSubscribe registers a subscription operation.
 func (mb *MQTTBuilder) RegisterSubscribe(topic string, spec SubscriptionSpec) error {
 	if mb.runConnectOnce.Load() {
-		return fmt.Errorf("cannot register subscription after connecting to MQTT broker")
+		return errors.New("cannot register subscription after connecting to MQTT broker")
 	}
 
 	sanitizedTopic := generate.SanitizePath(topic)
@@ -211,6 +211,7 @@ func (mb *MQTTBuilder) Connect() error {
 	go func() {
 		ticker := time.NewTicker(time.Second * 30)
 		defer ticker.Stop()
+
 		for {
 			select {
 			case <-done:
@@ -219,6 +220,7 @@ func (mb *MQTTBuilder) Connect() error {
 				if mb.client.IsConnectionOpen() {
 					return
 				}
+
 				mb.l.Warn("MQTT has not done an initial connection yet, still waiting...")
 			}
 		}

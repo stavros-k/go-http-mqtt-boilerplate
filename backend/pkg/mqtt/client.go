@@ -52,8 +52,10 @@ func (c *MQTTClient) Publish(operationID string, actualTopic string, payload any
 	go func() {
 		if !token.WaitTimeout(30 * time.Second) {
 			log.Warn("Publish still pending after 30s", slog.Int("qos", int(pub.QoS)))
+
 			return
 		}
+
 		if err := token.Error(); err != nil {
 			log.Error("Publish failed", utils.ErrAttr(err))
 		}
@@ -84,6 +86,7 @@ func (c *MQTTClient) Subscribe(operationID string) error {
 	}
 
 	log.Info("Subscribed successfully")
+
 	return nil
 }
 
@@ -95,6 +98,9 @@ type MQTTClientOptions struct {
 	Password  string
 }
 
+// newLowLevelMQTTClient creates a new low-level MQTT client using the provided options.
+//
+//nolint:ireturn // We return the library MQTT client type
 func newLowLevelMQTTClient(l *slog.Logger, opts *MQTTClientOptions, mb *MQTTBuilder) mqtt.Client {
 	logger := l.With(
 		slog.String("component", "mqtt-client"),

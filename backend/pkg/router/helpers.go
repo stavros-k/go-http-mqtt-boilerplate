@@ -57,6 +57,7 @@ func generateParameters(spec RouteSpec) ([]generate.ParameterInfo, error) {
 			if !generate.IsValidParameterName(paramName) {
 				return nil, fmt.Errorf("invalid parameter name %s in path %s", paramName, spec.fullPath)
 			}
+
 			paramsInPath[paramName] = struct{}{}
 		}
 	}
@@ -99,7 +100,6 @@ func generateParameters(spec RouteSpec) ([]generate.ParameterInfo, error) {
 
 			documentedPathParams[name] = struct{}{}
 		}
-
 	}
 
 	// Now go over all discovered path parameters and validate that they are documented
