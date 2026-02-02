@@ -50,6 +50,12 @@ type MQTTClientOptions struct {
 }
 
 func newMQTTClient(l *slog.Logger, opts *MQTTClientOptions, mb *MQTTBuilder) mqtt.Client {
+	logger := l.With(
+		slog.String("component", "mqtt-client"),
+		slog.String("broker", opts.BrokerURL),
+		slog.String("clientID", opts.ClientID),
+	)
+	logger.Info("Creating new MQTT client")
 	// TODO: Check this
 	clientOpts := mqtt.NewClientOptions()
 	clientOpts.AddBroker(opts.BrokerURL)
@@ -76,7 +82,7 @@ func newMQTTClient(l *slog.Logger, opts *MQTTClientOptions, mb *MQTTBuilder) mqt
 	clientOpts.SetConnectionLostHandler(mb.onConnectionLost)
 	clientOpts.SetReconnectingHandler(mb.onReconnecting)
 	// FIXME: Uncomment this on next release
-	// clientOpts.SetLogger(l.With(slog.String("component", "mqtt-client"), slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID)))
+	// clientOpts.SetLogger(logger)
 	// FIXME: Set will message
 	// clientOpts.SetWill("", "", 2, true)
 
