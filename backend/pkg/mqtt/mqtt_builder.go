@@ -49,7 +49,7 @@ func NewMQTTBuilder(l *slog.Logger, collector generate.MQTTMetadataCollector, op
 	}
 
 	mb.client = newMQTTClient(l, &opts, mb)
-	mb.wrappedClient = &MQTTClient{client: mb.client, builder: mb}
+	mb.wrappedClient = NewMQTTClient(l, mb.client, mb)
 
 	mqttBuilderLogger.Info("MQTT builder created", slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID))
 
@@ -254,15 +254,11 @@ func (mb *MQTTBuilder) onConnect(client mqtt.Client) {
 
 	// Subscribe to all registered subscriptions
 	for _, spec := range mb.subscriptions {
-		token := client.Subscribe(spec.TopicMQTT, byte(spec.QoS), spec.Handler)
-		token.Wait()
-
-		if err := token.Error(); err != nil {
-			mb.l.Error("Failed to subscribe", slog.String("topic", spec.TopicMQTT), slog.String("operationID", spec.OperationID), utils.ErrAttr(err))
-			continue
-		}
-
-		mb.l.Info("Subscribed", slog.String("topic", spec.TopicMQTT), slog.String("operationID", spec.OperationID))
+		go func() {
+			if err := mb.wrappedClient.Subscribe(spec.OperationID); err != nil {
+				mb.l.Error("Failed to subscribe", slog.String("operationID", spec.OperationID), utils.ErrAttr(err))
+			}
+		}()
 	}
 }
 

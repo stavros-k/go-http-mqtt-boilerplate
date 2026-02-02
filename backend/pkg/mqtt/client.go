@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"errors"
 	"fmt"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
@@ -12,6 +13,20 @@ import (
 type MQTTClient struct {
 	client  mqtt.Client
 	builder *MQTTBuilder
+	l       *slog.Logger
+}
+
+func NewMQTTClient(l *slog.Logger, client mqtt.Client, builder *MQTTBuilder) *MQTTClient {
+	return &MQTTClient{
+		client:  client,
+		builder: builder,
+		l:       l.With(slog.String("component", "mqtt-client-wrapper")),
+	}
+}
+
+// IsConnected returns true if the MQTT client is currently connected to the broker.
+func (c *MQTTClient) IsConnected() bool {
+	return c.client.IsConnectionOpen()
 }
 
 // Publish sends a message to the specified topic using the publication spec identified by operationID.
@@ -27,18 +42,49 @@ func (c *MQTTClient) Publish(operationID string, actualTopic string, payload any
 		return fmt.Errorf("failed to serialize payload: %w", err)
 	}
 
+	log := c.l.With(
+		slog.String("operationID", pub.OperationID),
+		slog.String("topic", actualTopic),
+		slog.Int("qos", int(pub.QoS)),
+	)
 	token := c.client.Publish(actualTopic, byte(pub.QoS), pub.Retained, bytes)
-	token.Wait()
 
-	if err := token.Error(); err != nil {
-		return fmt.Errorf("failed to publish to topic %s: %w", actualTopic, err)
-	}
+	go func() {
+		if !token.WaitTimeout(30 * time.Second) {
+			log.Warn("Publish still pending after 30s", slog.Int("qos", int(pub.QoS)))
+			return
+		}
+		if err := token.Error(); err != nil {
+			log.Error("Publish failed", utils.ErrAttr(err))
+		}
+	}()
 
 	return nil
 }
 
-func (c *MQTTClient) IsConnected() bool {
-	return c.client.IsConnectionOpen()
+func (c *MQTTClient) Subscribe(operationID string) error {
+	sub, ok := c.builder.subscriptions[operationID]
+	if !ok {
+		return fmt.Errorf("subscription not found for operationID %s", operationID)
+	}
+
+	log := c.l.With(
+		slog.String("operationID", sub.OperationID),
+		slog.String("topic", sub.TopicMQTT),
+		slog.Int("qos", int(sub.QoS)),
+	)
+
+	token := c.client.Subscribe(sub.TopicMQTT, byte(sub.QoS), sub.Handler)
+	if !token.WaitTimeout(10 * time.Second) {
+		return errors.New("subscribe timeout")
+	}
+
+	if err := token.Error(); err != nil {
+		return err
+	}
+
+	log.Info("Subscribed successfully")
+	return nil
 }
 
 // MQTTClientOptions contains configuration for creating an MQTT client.
