@@ -58,6 +58,9 @@ func newMQTTClient(l *slog.Logger, opts *MQTTClientOptions, mb *MQTTBuilder) mqt
 	logger.Info("Creating new MQTT client")
 	// TODO: Check this
 	clientOpts := mqtt.NewClientOptions()
+	// FIXME: Uncomment this on next release
+	// clientOpts.SetLogger(logger)
+
 	clientOpts.AddBroker(opts.BrokerURL)
 	clientOpts.SetClientID(opts.ClientID)
 
@@ -81,8 +84,6 @@ func newMQTTClient(l *slog.Logger, opts *MQTTClientOptions, mb *MQTTBuilder) mqt
 	clientOpts.SetOnConnectHandler(mb.onConnect)
 	clientOpts.SetConnectionLostHandler(mb.onConnectionLost)
 	clientOpts.SetReconnectingHandler(mb.onReconnecting)
-	// FIXME: Uncomment this on next release
-	// clientOpts.SetLogger(logger)
 	// FIXME: Set will message
 	// clientOpts.SetWill("", "", 2, true)
 
