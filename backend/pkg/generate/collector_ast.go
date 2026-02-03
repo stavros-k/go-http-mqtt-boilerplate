@@ -343,6 +343,11 @@ func (g *OpenAPICollector) analyzeArrayType(t *ast.ArrayType) (FieldType, []stri
 
 // analyzeMapType handles map types (map[K]V).
 func (g *OpenAPICollector) analyzeMapType(t *ast.MapType) (FieldType, []string, error) {
+	// Validate key type - OpenAPI/JSON only supports string keys
+	if err := g.isMapKeyString(t); err != nil {
+		return FieldType{}, nil, err
+	}
+
 	valueType, valueRefs, err := g.analyzeGoType(t.Value)
 	if err != nil {
 		return FieldType{}, nil, err
@@ -443,6 +448,36 @@ func (g *OpenAPICollector) parseDeprecation(comments string) (string, string, er
 	}
 
 	return message, cleanedDesc, nil
+}
+
+func (g *OpenAPICollector) isMapKeyString(t *ast.MapType) error {
+	keyType, _, err := g.analyzeGoType(t.Key)
+	if err != nil {
+		return fmt.Errorf("failed to analyze map key type: %w", err)
+	}
+
+	switch keyType.Kind {
+	case FieldKindPrimitive:
+		// Check if key is a string primitive
+		if keyType.Type != "string" {
+			return fmt.Errorf("map key type %s is not a string - OpenAPI only supports string keys", keyType.Type)
+		}
+	case FieldKindReference:
+		// Check if key is a string alias
+		typeInfo, exists := g.types[keyType.Type]
+		if !exists || typeInfo.Kind != TypeKindAlias {
+			return fmt.Errorf("map key type %s must be string or a string alias - OpenAPI only supports string keys", keyType.Type)
+		}
+
+		// Check if key alias is a string primitive
+		if typeInfo.UnderlyingType == nil || typeInfo.UnderlyingType.Kind != FieldKindPrimitive || typeInfo.UnderlyingType.Type != "string" {
+			return fmt.Errorf("map key type %s must be string or a string alias - OpenAPI only supports string keys", keyType.Type)
+		}
+	default:
+		return fmt.Errorf("map key type %s is not supported - OpenAPI only supports string keys", keyType.Type)
+	}
+
+	return nil
 }
 
 // generateDisplayType creates a human-readable type string from FieldType.
