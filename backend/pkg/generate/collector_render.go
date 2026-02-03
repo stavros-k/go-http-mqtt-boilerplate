@@ -45,6 +45,14 @@ func (g *OpenAPICollector) generateTypesRepresentations() error {
 		}
 
 		typeInfo.Representations.JSONSchema = jsonSchema
+
+		// YAML Schema Representation (same schema, different format)
+		yamlSchema, err := schemaToYAMLString(schema)
+		if err != nil {
+			return fmt.Errorf("failed to serialize YAML schema for type %s: %w", name, err)
+		}
+
+		typeInfo.Representations.YAMLSchema = yamlSchema
 	}
 
 	g.l.Debug("All representations generated successfully")

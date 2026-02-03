@@ -321,6 +321,23 @@ function FieldItem({ field }: { field: FieldMetadata }) {
                             Map/Dictionary Type
                         </span>
                     </div>
+                    {field.typeInfo?.mapKeyType && (
+                        <div className='mb-2 flex items-center gap-2 text-sm'>
+                            <span className='text-text-tertiary'>Keys:</span>
+                            {isTypeLink(field.typeInfo.mapKeyType.type) ? (
+                                <Link
+                                    href={`/api/type/${field.typeInfo.mapKeyType.type}`}
+                                    className='inline-flex items-center gap-1 rounded border border-type-reference/30 bg-type-reference/10 px-2 py-0.5 font-mono font-semibold text-type-reference text-xs transition-all duration-200 hover:border-type-reference hover:bg-type-reference/20'>
+                                    {field.typeInfo.mapKeyType.type}
+                                    <BiLinkExternal className='h-3 w-3' />
+                                </Link>
+                            ) : (
+                                <code className='rounded border border-type-primitive/30 bg-type-primitive/10 px-2 py-0.5 font-mono font-semibold text-type-primitive text-xs'>
+                                    {field.typeInfo.mapKeyType.type}
+                                </code>
+                            )}
+                        </div>
+                    )}
                     <div className='flex items-center gap-2 text-sm'>
                         <span className='text-text-tertiary'>Values:</span>
                         {isTypeLink(additionalProps.type) ? (
