@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/oasdiff/yaml"
 )
 
 const (
@@ -572,4 +573,27 @@ func schemaToJSONString(schema *openapi3.Schema) (string, error) {
 	}
 
 	return dest.String(), nil
+}
+
+// schemaToYAMLString converts an OpenAPI schema to a stringified YAML representation.
+// This mirrors the pattern used by schema.MarshalJSON() which also calls MarshalYAML()
+// to get the intermediate data structure, then marshals it to the target format.
+func schemaToYAMLString(schema *openapi3.Schema) (string, error) {
+	if schema == nil {
+		return "", nil
+	}
+
+	// Get intermediate data structure for marshaling
+	data, err := schema.MarshalYAML()
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare schema for marshaling: %w", err)
+	}
+
+	// Marshal to YAML bytes
+	yamlBytes, err := yaml.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal to YAML: %w", err)
+	}
+
+	return string(yamlBytes), nil
 }

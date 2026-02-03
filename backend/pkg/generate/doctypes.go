@@ -20,6 +20,7 @@ type TypeInfo struct {
 type Representations struct {
 	JSON       string `json:"json"`       // JSON representation of the type (zero value example)
 	JSONSchema string `json:"jsonSchema"` // JSON Schema representation of the type
+	YAMLSchema string `json:"yamlSchema"` // YAML Schema representation of the type (more human-readable)
 	Go         string `json:"go"`         // Go representation of the type
 	TS         string `json:"ts"`         // TypeScript representation of the type
 }
