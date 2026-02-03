@@ -22,6 +22,10 @@ import (
 	"syscall"
 	"time"
 
+	mqttbroker "github.com/mochi-mqtt/server/v2"
+	"github.com/mochi-mqtt/server/v2/hooks/auth"
+	"github.com/mochi-mqtt/server/v2/listeners"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -31,6 +35,9 @@ const (
 )
 
 func main() {
+	sigCtx, sigCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer sigCancel()
+
 	config, err := config.New()
 	if err != nil {
 		fatalIfErr(slog.Default(), fmt.Errorf("failed to create config: %w", err))
@@ -47,13 +54,12 @@ func main() {
 	defer utils.LogOnError(logger, db.Close, "failed to close database")
 
 	queries := sqlitegen.New(db)
-	services := services.NewServices(logger, db, queries)
-	apiHandler := api.NewAPIHandler(logger, services)
-	mqttHandler := mqttapi.NewMQTTHandler(logger, services)
 
 	// Create collector for OpenAPI generation
 	collector, err := getCollector(config, logger)
 	fatalIfErr(logger, err)
+
+	// Create MQTT builder first, before services
 
 	// Builders
 	rb, err := router.NewRouteBuilder(logger, collector)
@@ -67,7 +73,10 @@ func main() {
 	})
 	fatalIfErr(logger, err)
 
-	services.RegisterMQTTClient(mb.Client())
+	// Now create services with the initialized MQTT client
+	services := services.NewServices(logger, db, queries, mb.Client())
+	apiHandler := api.NewAPIHandler(logger, services)
+	mqttHandler := mqttapi.NewMQTTHandler(logger, services)
 
 	registerHTTPHandlers(logger, rb, apiHandler)
 	registerMQTTHandlers(logger, mb, mqttHandler)
@@ -80,25 +89,36 @@ func main() {
 		return
 	}
 
-	defer mb.Disconnect()
 	go func() {
 		if err := mb.Connect(); err != nil {
 			logger.Error("Failed to connect to MQTT broker", utils.ErrAttr(err))
 		}
 	}()
 
-	addr := fmt.Sprintf(":%d", config.Port)
+	//  MQTT Broker
+	mqttAddr := fmt.Sprintf(":%d", config.MQTTBrokerPort)
+	mqttBroker, err := getMQTTServer(logger, mqttAddr)
+	fatalIfErr(logger, err)
+
+	go func() {
+		logger.Info("MQTT broker listening", slog.String("address", mqttAddr))
+
+		if err := mqttBroker.Serve(); err != nil {
+			logger.Error("MQTT broker failed", utils.ErrAttr(err))
+			sigCancel()
+		}
+	}()
+
+	// HTTP Server
+	httpAddr := fmt.Sprintf(":%d", config.Port)
 	httpServer := &http.Server{
-		Addr:              addr,
+		Addr:              httpAddr,
 		Handler:           rb.Router(),
 		ReadHeaderTimeout: readHeaderTimeout,
 	}
 
-	sigCtx, sigCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer sigCancel()
-
 	go func() {
-		logger.Info("http server listening", slog.String("address", addr))
+		logger.Info("http server listening", slog.String("address", httpAddr))
 
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("server failed", utils.ErrAttr(err))
@@ -112,13 +132,43 @@ func main() {
 
 	// Shutdown HTTP server
 	logger.Info("http server shutting down...")
+
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
+
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		logger.Error("http server shutdown failed", utils.ErrAttr(err))
 	}
 
+	logger.Info("disconnecting from MQTT broker...")
+	mb.Disconnect()
+
+	// Shutdown MQTT broker
+	logger.Info("mqtt broker shutting down...")
+
+	if err := mqttBroker.Close(); err != nil {
+		logger.Error("mqtt broker shutdown failed", utils.ErrAttr(err))
+	}
+
 	logger.Info("server exited gracefully")
+}
+
+func getMQTTServer(l *slog.Logger, addr string) (*mqttbroker.Server, error) {
+	server := mqttbroker.New(&mqttbroker.Options{
+		Logger: l.With(slog.String("component", "mqtt-broker")),
+	})
+	tcp := listeners.NewTCP(listeners.Config{ID: "tcp", Address: addr})
+
+	err := server.AddListener(tcp)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := server.AddHook(new(auth.AllowHook), nil); err != nil {
+		return nil, err
+	}
+
+	return server, nil
 }
 
 // registerHTTPHandlers registers all HTTP handlers.
@@ -131,6 +181,8 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *api.Handle
 		rb.Use(h.LoggerMiddleware)
 
 		h.RegisterPing("/ping", rb)
+		h.RegisterHealth("/health", rb)
+
 		rb.Route("/team", func(rb *router.RouteBuilder) {
 			h.RegisterGetTeam("/{teamID}", rb)
 			h.RegisterPutTeam("/", rb)

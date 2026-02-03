@@ -49,6 +49,7 @@ func (u *URL) UnmarshalJSON(data []byte) error {
 	// Handle JSON null explicitly
 	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
 		u.URL = nil
+
 		return nil
 	}
 

@@ -27,17 +27,9 @@ type MQTTBuilder struct {
 	runConnectOnce atomic.Bool
 }
 
-// MQTTClientOptions contains configuration for creating an MQTT client.
-type MQTTClientOptions struct {
-	BrokerURL string
-	ClientID  string
-	Username  string
-	Password  string
-}
-
 // NewMQTTBuilder creates a new MQTT builder with the given broker configuration.
 func NewMQTTBuilder(l *slog.Logger, collector generate.MQTTMetadataCollector, opts MQTTClientOptions) (*MQTTBuilder, error) {
-	l = l.With(slog.String("component", "mqtt-builder"))
+	mqttBuilderLogger := l.With(slog.String("component", "mqtt-builder"))
 
 	if opts.BrokerURL == "" {
 		return nil, errors.New("broker URL is required")
@@ -49,50 +41,17 @@ func NewMQTTBuilder(l *slog.Logger, collector generate.MQTTMetadataCollector, op
 
 	mb := &MQTTBuilder{
 		collector:     collector,
-		l:             l,
+		l:             mqttBuilderLogger,
 		operationIDs:  make(map[string]struct{}),
 		publications:  make(map[string]*PublicationSpec),
 		subscriptions: make(map[string]*SubscriptionSpec),
 		connected:     false,
 	}
 
-	// Configure MQTT client options
-	// TODO: Check this
-	clientOpts := mqtt.NewClientOptions()
-	clientOpts.AddBroker(opts.BrokerURL)
-	clientOpts.SetClientID(opts.ClientID)
+	mb.client = newLowLevelMQTTClient(l, &opts, mb)
+	mb.wrappedClient = newWrappedMQTTClient(l, mb.client, mb)
 
-	if opts.Username != "" {
-		clientOpts.SetUsername(opts.Username)
-	}
-
-	if opts.Password != "" {
-		clientOpts.SetPassword(opts.Password)
-	}
-
-	// Retry every 5 seconds, max interval 15 seconds
-	clientOpts.SetAutoReconnect(true)
-	clientOpts.SetConnectRetry(true)
-	clientOpts.SetConnectTimeout(5 * time.Second)
-	clientOpts.SetConnectRetryInterval(5 * time.Second)
-	clientOpts.SetMaxReconnectInterval(15 * time.Second)
-	clientOpts.SetKeepAlive(30 * time.Second)
-
-	// Set connection callbacks
-	clientOpts.SetOnConnectHandler(mb.onConnect)
-	clientOpts.SetConnectionLostHandler(mb.onConnectionLost)
-	clientOpts.SetReconnectingHandler(mb.onReconnecting)
-
-	// FIXME: Set will message
-	// clientOpts.SetWill("", "", 2, true)
-
-	mb.client = mqtt.NewClient(clientOpts)
-	mb.wrappedClient = &MQTTClient{
-		client:  mb.client,
-		builder: mb,
-	}
-
-	l.Info("MQTT builder created", slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID))
+	mqttBuilderLogger.Info("MQTT builder created", slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID))
 
 	return mb, nil
 }
@@ -105,7 +64,7 @@ func (mb *MQTTBuilder) Client() *MQTTClient {
 // RegisterPublish registers a publication operation.
 func (mb *MQTTBuilder) RegisterPublish(topic string, spec PublicationSpec) error {
 	if mb.runConnectOnce.Load() {
-		return fmt.Errorf("cannot register subscription after connecting to MQTT broker")
+		return errors.New("cannot register subscription after connecting to MQTT broker")
 	}
 
 	// Validate topic
@@ -171,7 +130,7 @@ func (mb *MQTTBuilder) MustRegisterPublish(topic string, spec PublicationSpec) {
 // RegisterSubscribe registers a subscription operation.
 func (mb *MQTTBuilder) RegisterSubscribe(topic string, spec SubscriptionSpec) error {
 	if mb.runConnectOnce.Load() {
-		return fmt.Errorf("cannot register subscription after connecting to MQTT broker")
+		return errors.New("cannot register subscription after connecting to MQTT broker")
 	}
 
 	sanitizedTopic := generate.SanitizePath(topic)
@@ -252,6 +211,7 @@ func (mb *MQTTBuilder) Connect() error {
 	go func() {
 		ticker := time.NewTicker(time.Second * 30)
 		defer ticker.Stop()
+
 		for {
 			select {
 			case <-done:
@@ -260,6 +220,7 @@ func (mb *MQTTBuilder) Connect() error {
 				if mb.client.IsConnectionOpen() {
 					return
 				}
+
 				mb.l.Warn("MQTT has not done an initial connection yet, still waiting...")
 			}
 		}
@@ -295,15 +256,11 @@ func (mb *MQTTBuilder) onConnect(client mqtt.Client) {
 
 	// Subscribe to all registered subscriptions
 	for _, spec := range mb.subscriptions {
-		token := client.Subscribe(spec.TopicMQTT, byte(spec.QoS), spec.Handler)
-		token.Wait()
-
-		if err := token.Error(); err != nil {
-			mb.l.Error("Failed to subscribe", slog.String("topic", spec.TopicMQTT), slog.String("operationID", spec.OperationID), utils.ErrAttr(err))
-			continue
-		}
-
-		mb.l.Info("Subscribed", slog.String("topic", spec.TopicMQTT), slog.String("operationID", spec.OperationID))
+		go func() {
+			if err := mb.wrappedClient.Subscribe(spec.OperationID); err != nil {
+				mb.l.Error("Failed to subscribe", slog.String("operationID", spec.OperationID), utils.ErrAttr(err))
+			}
+		}()
 	}
 }
 

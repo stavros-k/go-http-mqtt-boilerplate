@@ -6,6 +6,8 @@ import (
 )
 
 func TestValidateTopicPattern(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		topic       string
@@ -122,6 +124,8 @@ func TestValidateTopicPattern(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := validateTopicPattern(tt.topic)
 			if tt.expectError {
 				if err == nil {
@@ -139,6 +143,8 @@ func TestValidateTopicPattern(t *testing.T) {
 }
 
 func TestConvertTopicToMQTT(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		input    string
@@ -183,6 +189,8 @@ func TestConvertTopicToMQTT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			result := convertTopicToMQTT(tt.input)
 			if result != tt.expected {
 				t.Errorf("convertTopicToMQTT(%q) = %q, want %q", tt.input, result, tt.expected)
@@ -192,6 +200,8 @@ func TestConvertTopicToMQTT(t *testing.T) {
 }
 
 func TestValidateQoS(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		qos         QoS
@@ -226,10 +236,13 @@ func TestValidateQoS(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := validateQoS(tt.qos)
 			if tt.expectError && err == nil {
 				t.Errorf("validateQoS(%d) expected error, got nil", tt.qos)
 			}
+
 			if !tt.expectError && err != nil {
 				t.Errorf("validateQoS(%d) unexpected error: %v", tt.qos, err)
 			}

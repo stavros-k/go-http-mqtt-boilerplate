@@ -20,6 +20,8 @@ const (
 	EnvLogLevel  EnvKey = "LOG_LEVEL"
 	EnvLogToFile EnvKey = "LOG_TO_FILE"
 
+	EnvMQTTBrokerPort EnvKey = "MQTT_SERVER_PORT"
+
 	EnvMQTTBroker   EnvKey = "MQTT_BROKER"
 	EnvMQTTClientID EnvKey = "MQTT_CLIENT_ID"
 	EnvMQTTUsername EnvKey = "MQTT_USERNAME"
@@ -33,6 +35,9 @@ type Config struct {
 	Database  string
 	LogLevel  slog.Leveler
 	LogOutput io.Writer
+
+	// MQTT Server configuration
+	MQTTBrokerPort int
 
 	// MQTT configuration
 	MQTTBroker   string
@@ -66,16 +71,17 @@ func New() (*Config, error) {
 	}
 
 	return &Config{
-		Port:         getIntEnv(EnvPort, 8080),
-		Generate:     getBoolEnv(EnvGenerate, false),
-		DataDir:      dataDir,
-		Database:     dbPath,
-		LogLevel:     getLogLevelEnv(EnvLogLevel, slog.LevelInfo),
-		LogOutput:    logOutput,
-		MQTTBroker:   getStringEnv(EnvMQTTBroker, "tcp://localhost:1883"),
-		MQTTClientID: getStringEnv(EnvMQTTClientID, "http-mqtt-boilerplate-server"),
-		MQTTUsername: getStringEnv(EnvMQTTUsername, ""),
-		MQTTPassword: getStringEnv(EnvMQTTPassword, ""),
+		Port:           getIntEnv(EnvPort, 8080),
+		Generate:       getBoolEnv(EnvGenerate, false),
+		DataDir:        dataDir,
+		Database:       dbPath,
+		LogLevel:       getLogLevelEnv(EnvLogLevel, slog.LevelInfo),
+		LogOutput:      logOutput,
+		MQTTBrokerPort: getIntEnv(EnvMQTTBrokerPort, 1883),
+		MQTTBroker:     getStringEnv(EnvMQTTBroker, "tcp://127.0.0.1:1883"),
+		MQTTClientID:   getStringEnv(EnvMQTTClientID, "http-mqtt-boilerplate-server"),
+		MQTTUsername:   getStringEnv(EnvMQTTUsername, ""),
+		MQTTPassword:   getStringEnv(EnvMQTTPassword, ""),
 	}, nil
 }
 

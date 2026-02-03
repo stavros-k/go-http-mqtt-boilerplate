@@ -87,9 +87,9 @@ func isASCIILetter(r rune) bool {
 	return false
 }
 
-// isValidParameterName validates that a parameter name:
+// IsValidParameterName validates that a parameter name:
 // - Starts with a letter (a-z, A-Z)
-// - Contains only letters, digits, and underscores
+// - Contains only letters, digits, and underscores.
 func IsValidParameterName(name string) bool {
 	if name == "" {
 		return false
@@ -100,6 +100,7 @@ func IsValidParameterName(name string) bool {
 			if !isASCIILetter(r) {
 				return false
 			}
+
 			continue
 		}
 
