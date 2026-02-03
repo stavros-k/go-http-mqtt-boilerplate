@@ -44,6 +44,45 @@ func isEnumKind(kind string) bool {
 	return kind == TypeKindStringEnum || kind == TypeKindNumberEnum
 }
 
+// isNilOrNilPointer checks if a value is nil or a nil pointer.
+// Returns true if the value should be rejected (is nil).
+func isNilOrNilPointer(value any) bool {
+	if value == nil {
+		return true
+	}
+
+	val := reflect.ValueOf(value)
+
+	return val.Kind() == reflect.Pointer && val.IsNil()
+}
+
+// isZeroValueStruct checks if a value is a zero-value struct (all fields are zero values).
+// Returns true if it's a struct with all zero-valued fields.
+// This is different from nil - a zero-value struct is an explicitly created struct
+// like MyStruct{} or MyStruct{Field: false} where all fields happen to be zero.
+func isZeroValueStruct(value any) bool {
+	if value == nil {
+		return false
+	}
+
+	val := reflect.ValueOf(value)
+	// Handle pointer to struct
+	if val.Kind() == reflect.Pointer {
+		if val.IsNil() {
+			return false
+		}
+
+		val = val.Elem()
+	}
+
+	// Only check structs
+	if val.Kind() != reflect.Struct {
+		return false
+	}
+
+	return val.IsZero()
+}
+
 // External type format constants for OpenAPI schema generation.
 const (
 	FormatDateTime = "date-time"
@@ -231,7 +270,7 @@ func newTSParser(l *slog.Logger, goTypesDirPath string) (*TSParser, error) {
 	})
 
 	if _, err := os.Stat(goTypesDirPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("go types dir path %s does not exist", goTypesDirPath)
+		return nil, fmt.Errorf("failed to validate TypeScript parser: go types dir path %s does not exist", goTypesDirPath)
 	}
 
 	if err := goParser.IncludeGenerate(goTypesDirPath); err != nil {
@@ -286,12 +325,12 @@ func (g *OpenAPICollector) SerializeTSNode(name string) (string, error) {
 
 	tsNode, err := g.tsParser.vm.ToTypescriptNode(node)
 	if err != nil {
-		return "", fmt.Errorf("failed to convert node to TypeScript node: %w", err)
+		return "", fmt.Errorf("failed to convert node to TypeScript node for type %s: %w", name, err)
 	}
 
 	serialized, err := g.tsParser.vm.SerializeToTypescript(tsNode)
 	if err != nil {
-		return "", fmt.Errorf("failed to serialize TypeScript node: %w", err)
+		return "", fmt.Errorf("failed to serialize TypeScript node for type %s: %w", name, err)
 	}
 
 	// Filter unwanted lines while preserving spacing
@@ -360,7 +399,7 @@ func (g *OpenAPICollector) RegisterJSONRepresentation(value any) error {
 
 	typeInfo, ok := g.types[typeName]
 	if !ok {
-		return fmt.Errorf("type %s not found", typeName)
+		return fmt.Errorf("failed to register JSON representation: type %s not found in types map", typeName)
 	}
 
 	representation := string(utils.MustToJSONIndent(value))
@@ -384,31 +423,40 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 		return fmt.Errorf("duplicate operationID: %s", route.OperationID)
 	}
 
-	// Request type should be either `nil` or a non-zero struct type
+	// Process request body if provided
+	// route.Request can be nil (operation has no request body)
+	// If route.Request is provided, its TypeValue must be a valid (non-nil) type
 	if route.Request != nil {
-		if reflect.ValueOf(route.Request.TypeValue).IsZero() {
-			return fmt.Errorf("request Type must not be zero value in route [%s]", route.OperationID)
+		if isNilOrNilPointer(route.Request.TypeValue) {
+			return fmt.Errorf("request TypeValue must not be nil when Request is provided in route [%s]", route.OperationID)
 		}
 
 		typeName, stringifiedExamples, err := g.processHTTPType(route.Request.TypeValue, route.Request.Examples, "request")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to process request type in route [%s]: %w", route.OperationID, err)
 		}
 
 		route.Request.TypeName = typeName
 		route.Request.ExamplesStringified = stringifiedExamples
 	}
 
+	// Process responses (required - every route must have at least one response)
+	// Response TypeValue must be a zero-value struct (e.g., MyResponse{})
+	// This indicates the type without providing actual data (examples provide the data)
 	for statusCode, response := range route.Responses {
-		if !reflect.ValueOf(response.TypeValue).IsZero() {
-			return fmt.Errorf("response Type must be zero value in route [%s]", route.OperationID)
+		if isNilOrNilPointer(response.TypeValue) {
+			return fmt.Errorf("response TypeValue must not be nil in route [%s] for status %d", route.OperationID, statusCode)
+		}
+
+		if !isZeroValueStruct(response.TypeValue) {
+			return fmt.Errorf("response TypeValue must be zero value struct (e.g., MyResponse{}) in route [%s] for status %d - use Examples for actual data", route.OperationID, statusCode)
 		}
 
 		resp := response
 
 		typeName, stringifiedExamples, err := g.processHTTPType(resp.TypeValue, resp.Examples, "response")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to process response type [%s] for status code [%d] in route [%s]: %w", typeName, statusCode, route.OperationID, err)
 		}
 
 		resp.TypeName = typeName
@@ -419,7 +467,7 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 	for i := range route.Parameters {
 		typeName, _, err := g.processHTTPType(route.Parameters[i].TypeValue, nil, "parameter")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to process parameter type in route [%s]: %w", route.OperationID, err)
 		}
 
 		route.Parameters[i].TypeName = typeName
@@ -513,7 +561,7 @@ func (g *OpenAPICollector) processHTTPType(typeValue any, examples map[string]an
 	g.markTypeAsHTTP(typeName)
 
 	if err := g.RegisterJSONRepresentation(typeValue); err != nil {
-		return "", nil, fmt.Errorf("failed to register JSON representation for %s type: %w", contextMsg, err)
+		return "", nil, fmt.Errorf("failed to register JSON representation for %s type [%s]: %w", contextMsg, typeName, err)
 	}
 
 	// Register and stringify examples if provided
@@ -533,9 +581,9 @@ func (g *OpenAPICollector) processHTTPType(typeValue any, examples map[string]an
 // processMQTTMessageType extracts type information and registers representations for an MQTT message.
 // Returns the type name and stringified examples.
 func (g *OpenAPICollector) processMQTTMessageType(operationID string, typeValue any, examples map[string]any, messageKind string) (typeName string, stringifiedExamples map[string]string, err error) {
-	// Validate type value is not zero
-	if reflect.ValueOf(typeValue).IsZero() {
-		return "", nil, fmt.Errorf("MessageType must not be zero value in %s [%s]", messageKind, operationID)
+	// Validate type value is not nil
+	if isNilOrNilPointer(typeValue) {
+		return "", nil, fmt.Errorf("MessageType must not be nil in %s [%s]", messageKind, operationID)
 	}
 
 	// Extract type name from zero value using reflection
@@ -566,9 +614,9 @@ func (g *OpenAPICollector) processMQTTMessageType(operationID string, typeValue 
 // processMQTTTopicParameter extracts type information and registers representations for an MQTT topic parameter.
 // Returns the type name.
 func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeValue any, contextMsg string) (string, error) {
-	// Validate type value is not zero
-	if reflect.ValueOf(typeValue).IsZero() {
-		return "", fmt.Errorf("topic parameter TypeValue must not be zero value in %s [%s]", contextMsg, operationID)
+	// Validate type value is not nil
+	if isNilOrNilPointer(typeValue) {
+		return "", fmt.Errorf("topic parameter TypeValue must not be nil in %s [%s]", contextMsg, operationID)
 	}
 
 	// Extract type name from zero value using reflection
@@ -590,9 +638,9 @@ func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeVal
 
 // registerExamples registers JSON representations for a slice of examples.
 func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
-	for _, ex := range examples {
-		if reflect.ValueOf(ex).IsZero() {
-			return errors.New("value for example should not be zero value")
+	for name, ex := range examples {
+		if isNilOrNilPointer(ex) {
+			return fmt.Errorf("value for example [%s] should not be nil", name)
 		}
 
 		if err := g.RegisterJSONRepresentation(ex); err != nil {
@@ -689,7 +737,7 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 	g.l.Debug("Parsing Go types directory", slog.String("path", goTypesDirPath))
 
 	if _, err := os.Stat(goTypesDirPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("go types dir path %s does not exist", goTypesDirPath)
+		return nil, fmt.Errorf("failed to parse Go types directory: path %s does not exist", goTypesDirPath)
 	}
 
 	// Use go/packages to load and type-check the package
@@ -701,7 +749,7 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 
 	pkgs, err := packages.Load(cfg, ".")
 	if err != nil {
-		return nil, fmt.Errorf("failed to load package: %w", err)
+		return nil, fmt.Errorf("failed to load package from directory %s: %w", goTypesDirPath, err)
 	}
 
 	if len(pkgs) == 0 {
@@ -717,7 +765,7 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 			errMsgs = append(errMsgs, e.Error())
 		}
 
-		return nil, fmt.Errorf("package loading failed with errors: %s", strings.Join(errMsgs, "; "))
+		return nil, fmt.Errorf("package %s loading failed from directory %s with errors: %s", pkg.Name, goTypesDirPath, strings.Join(errMsgs, "; "))
 	}
 
 	g.l.Debug("Go types parsed successfully",
@@ -1155,7 +1203,7 @@ func (g *OpenAPICollector) extractEnumsFromConstBlock(constDecl *ast.GenDecl) er
 
 		// If we've identified this as an enum block, all constants must be exported
 		if enumTypeName != "" && !allExported {
-			return errors.New("enum const blocks must not contain unexported constants")
+			return fmt.Errorf("enum %s: const blocks must not contain unexported constants", enumTypeName)
 		}
 
 		// Skip const specs with no exported names (only before enum type is established)
@@ -1170,11 +1218,15 @@ func (g *OpenAPICollector) extractEnumsFromConstBlock(constDecl *ast.GenDecl) er
 				return ErrNoEnumType
 			}
 
-			return errors.New("all exported constants in enum const block must have explicit type declaration")
+			return fmt.Errorf("enum %s: all exported constants in enum const block must have explicit type declaration", enumTypeName)
 		}
 
 		ident, ok := valueSpec.Type.(*ast.Ident)
 		if !ok {
+			if enumTypeName != "" {
+				return fmt.Errorf("enum %s: const type must be a simple identifier, got %T", enumTypeName, valueSpec.Type)
+			}
+
 			return fmt.Errorf("const type must be a simple identifier, got %T", valueSpec.Type)
 		}
 
@@ -1283,7 +1335,7 @@ func (g *OpenAPICollector) analyzeGoType(expr ast.Expr) (FieldType, []string, er
 
 		// Reject 'any' explicitly
 		if typeName == "any" {
-			return FieldType{}, nil, errors.New("type 'any' is not allowed in API types - use concrete types instead")
+			return FieldType{}, nil, errors.New("type 'any' is not allowed in API types - use concrete types instead. Check struct fields and type aliases for 'any' usage")
 		}
 
 		// Check if it's a defined type in our types map (will be populated after first pass)
@@ -1308,7 +1360,7 @@ func (g *OpenAPICollector) analyzeGoType(expr ast.Expr) (FieldType, []string, er
 		return g.analyzeSelectorType(t)
 
 	default:
-		return FieldType{}, nil, fmt.Errorf("unsupported type expression: %T", expr)
+		return FieldType{}, nil, fmt.Errorf("unsupported type expression: %T (check for unsupported Go language features like interfaces, channels, or functions)", expr)
 	}
 }
 
@@ -1493,7 +1545,7 @@ func (g *OpenAPICollector) generateGoSource(typeInfo *TypeInfo) (string, error) 
 
 	formatted, err := format.Source([]byte(cleaned))
 	if err != nil {
-		return "", fmt.Errorf("failed to format Go source: %w", err)
+		return "", fmt.Errorf("failed to format Go source for type %s: %w", typeInfo.Name, err)
 	}
 
 	return string(formatted), nil
@@ -1547,6 +1599,27 @@ func (g *OpenAPICollector) buildUsedBy() {
 	// Track MQTT subscriptions
 	for _, sub := range g.mqttSubscriptions {
 		g.addUsage(sub.TypeName, sub.OperationID, "mqtt_subscription")
+	}
+
+	for _, typ := range g.types {
+		usages := make(map[string]struct{})
+		dedupedUsages := []UsageInfo{}
+
+		for _, usage := range typ.UsedBy {
+			key := fmt.Sprintf("%s:%s", usage.OperationID, usage.Role)
+			if _, used := usages[key]; used {
+				continue
+			}
+
+			dedupedUsages = append(dedupedUsages, usage)
+			usages[key] = struct{}{}
+		}
+
+		if len(dedupedUsages) == 0 {
+			dedupedUsages = nil
+		}
+
+		typ.UsedBy = dedupedUsages
 	}
 }
 
@@ -1614,7 +1687,7 @@ func (g *OpenAPICollector) parseDeprecation(comments string) (string, string, er
 	cleanedDesc := strings.TrimSpace(comments[:idx])
 
 	if message == "" {
-		return "", cleanedDesc, errors.New("deprecation message is empty")
+		return "", cleanedDesc, errors.New("deprecation message is empty - when using 'Deprecated:' comment, provide a message explaining why it's deprecated and what to use instead")
 	}
 
 	return message, cleanedDesc, nil
