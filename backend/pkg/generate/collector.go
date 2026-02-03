@@ -44,6 +44,45 @@ func isEnumKind(kind string) bool {
 	return kind == TypeKindStringEnum || kind == TypeKindNumberEnum
 }
 
+// isNilOrNilPointer checks if a value is nil or a nil pointer.
+// Returns true if the value should be rejected (is nil).
+func isNilOrNilPointer(value any) bool {
+	if value == nil {
+		return true
+	}
+
+	val := reflect.ValueOf(value)
+
+	return val.Kind() == reflect.Pointer && val.IsNil()
+}
+
+// isZeroValueStruct checks if a value is a zero-value struct (all fields are zero values).
+// Returns true if it's a struct with all zero-valued fields.
+// This is different from nil - a zero-value struct is an explicitly created struct
+// like MyStruct{} or MyStruct{Field: false} where all fields happen to be zero.
+func isZeroValueStruct(value any) bool {
+	if value == nil {
+		return false
+	}
+
+	val := reflect.ValueOf(value)
+	// Handle pointer to struct
+	if val.Kind() == reflect.Pointer {
+		if val.IsNil() {
+			return false
+		}
+
+		val = val.Elem()
+	}
+
+	// Only check structs
+	if val.Kind() != reflect.Struct {
+		return false
+	}
+
+	return val.IsZero()
+}
+
 // External type format constants for OpenAPI schema generation.
 const (
 	FormatDateTime = "date-time"
@@ -386,14 +425,8 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 
 	// Request type should be either `nil` or a valid struct type
 	if route.Request != nil {
-		// Check for nil or nil pointer
-		if route.Request.TypeValue == nil {
+		if isNilOrNilPointer(route.Request.TypeValue) {
 			return fmt.Errorf("request TypeValue must not be nil in route [%s]", route.OperationID)
-		}
-
-		val := reflect.ValueOf(route.Request.TypeValue)
-		if val.Kind() == reflect.Pointer && val.IsNil() {
-			return fmt.Errorf("request TypeValue must not be a nil pointer in route [%s]", route.OperationID)
 		}
 
 		typeName, stringifiedExamples, err := g.processHTTPType(route.Request.TypeValue, route.Request.Examples, "request")
@@ -406,15 +439,12 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 	}
 
 	for statusCode, response := range route.Responses {
-		if response.TypeValue == nil {
+		if isNilOrNilPointer(response.TypeValue) {
 			return fmt.Errorf("response TypeValue must not be nil in route [%s]", route.OperationID)
 		}
-		val := reflect.ValueOf(response.TypeValue)
-		if val.Kind() == reflect.Pointer && val.IsNil() {
-			return fmt.Errorf("response TypeValue must not be a nil pointer in route [%s]", route.OperationID)
-		}
-		if !val.IsZero() {
-			return fmt.Errorf("response Type must be zero value in route [%s]", route.OperationID)
+
+		if !isZeroValueStruct(response.TypeValue) {
+			return fmt.Errorf("response Type must be zero value struct in route [%s]", route.OperationID)
 		}
 
 		resp := response
@@ -547,13 +577,8 @@ func (g *OpenAPICollector) processHTTPType(typeValue any, examples map[string]an
 // Returns the type name and stringified examples.
 func (g *OpenAPICollector) processMQTTMessageType(operationID string, typeValue any, examples map[string]any, messageKind string) (typeName string, stringifiedExamples map[string]string, err error) {
 	// Validate type value is not nil
-	if typeValue == nil {
+	if isNilOrNilPointer(typeValue) {
 		return "", nil, fmt.Errorf("MessageType must not be nil in %s [%s]", messageKind, operationID)
-	}
-
-	val := reflect.ValueOf(typeValue)
-	if val.Kind() == reflect.Pointer && val.IsNil() {
-		return "", nil, fmt.Errorf("MessageType must not be a nil pointer in %s [%s]", messageKind, operationID)
 	}
 
 	// Extract type name from zero value using reflection
@@ -585,13 +610,8 @@ func (g *OpenAPICollector) processMQTTMessageType(operationID string, typeValue 
 // Returns the type name.
 func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeValue any, contextMsg string) (string, error) {
 	// Validate type value is not nil
-	if typeValue == nil {
+	if isNilOrNilPointer(typeValue) {
 		return "", fmt.Errorf("topic parameter TypeValue must not be nil in %s [%s]", contextMsg, operationID)
-	}
-
-	val := reflect.ValueOf(typeValue)
-	if val.Kind() == reflect.Pointer && val.IsNil() {
-		return "", fmt.Errorf("topic parameter TypeValue must not be a nil pointer in %s [%s]", contextMsg, operationID)
 	}
 
 	// Extract type name from zero value using reflection
@@ -614,15 +634,8 @@ func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeVal
 // registerExamples registers JSON representations for a slice of examples.
 func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
 	for name, ex := range examples {
-		// Check for nil values or nil pointers
-		if ex == nil {
+		if isNilOrNilPointer(ex) {
 			return fmt.Errorf("value for example [%s] should not be nil", name)
-		}
-
-		// Check for nil pointers
-		val := reflect.ValueOf(ex)
-		if val.Kind() == reflect.Pointer && val.IsNil() {
-			return fmt.Errorf("value for example [%s] should not be a nil pointer", name)
 		}
 
 		if err := g.RegisterJSONRepresentation(ex); err != nil {
