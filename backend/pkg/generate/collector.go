@@ -231,7 +231,7 @@ func newTSParser(l *slog.Logger, goTypesDirPath string) (*TSParser, error) {
 	})
 
 	if _, err := os.Stat(goTypesDirPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("go types dir path %s does not exist", goTypesDirPath)
+		return nil, fmt.Errorf("failed to validate TypeScript parser: go types dir path %s does not exist", goTypesDirPath)
 	}
 
 	if err := goParser.IncludeGenerate(goTypesDirPath); err != nil {
@@ -286,12 +286,12 @@ func (g *OpenAPICollector) SerializeTSNode(name string) (string, error) {
 
 	tsNode, err := g.tsParser.vm.ToTypescriptNode(node)
 	if err != nil {
-		return "", fmt.Errorf("failed to convert node to TypeScript node: %w", err)
+		return "", fmt.Errorf("failed to convert node to TypeScript node for type %s: %w", name, err)
 	}
 
 	serialized, err := g.tsParser.vm.SerializeToTypescript(tsNode)
 	if err != nil {
-		return "", fmt.Errorf("failed to serialize TypeScript node: %w", err)
+		return "", fmt.Errorf("failed to serialize TypeScript node for type %s: %w", name, err)
 	}
 
 	// Filter unwanted lines while preserving spacing
@@ -360,7 +360,7 @@ func (g *OpenAPICollector) RegisterJSONRepresentation(value any) error {
 
 	typeInfo, ok := g.types[typeName]
 	if !ok {
-		return fmt.Errorf("type %s not found", typeName)
+		return fmt.Errorf("failed to register JSON representation: type %s not found in types map", typeName)
 	}
 
 	representation := string(utils.MustToJSONIndent(value))
@@ -392,7 +392,7 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 
 		typeName, stringifiedExamples, err := g.processHTTPType(route.Request.TypeValue, route.Request.Examples, "request")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to process request type in route [%s]: %w", route.OperationID, err)
 		}
 
 		route.Request.TypeName = typeName
@@ -408,7 +408,7 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 
 		typeName, stringifiedExamples, err := g.processHTTPType(resp.TypeValue, resp.Examples, "response")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to process response type [%s] for status code [%d] in route [%s]: %w", typeName, statusCode, route.OperationID, err)
 		}
 
 		resp.TypeName = typeName
@@ -419,7 +419,7 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 	for i := range route.Parameters {
 		typeName, _, err := g.processHTTPType(route.Parameters[i].TypeValue, nil, "parameter")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to process parameter type in route [%s]: %w", route.OperationID, err)
 		}
 
 		route.Parameters[i].TypeName = typeName
@@ -513,7 +513,7 @@ func (g *OpenAPICollector) processHTTPType(typeValue any, examples map[string]an
 	g.markTypeAsHTTP(typeName)
 
 	if err := g.RegisterJSONRepresentation(typeValue); err != nil {
-		return "", nil, fmt.Errorf("failed to register JSON representation for %s type: %w", contextMsg, err)
+		return "", nil, fmt.Errorf("failed to register JSON representation for %s type [%s]: %w", contextMsg, typeName, err)
 	}
 
 	// Register and stringify examples if provided
@@ -590,9 +590,9 @@ func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeVal
 
 // registerExamples registers JSON representations for a slice of examples.
 func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
-	for _, ex := range examples {
+	for name, ex := range examples {
 		if reflect.ValueOf(ex).IsZero() {
-			return errors.New("value for example should not be zero value")
+			return fmt.Errorf("value for example [%s] should not be zero value", name)
 		}
 
 		if err := g.RegisterJSONRepresentation(ex); err != nil {
@@ -689,7 +689,7 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 	g.l.Debug("Parsing Go types directory", slog.String("path", goTypesDirPath))
 
 	if _, err := os.Stat(goTypesDirPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("go types dir path %s does not exist", goTypesDirPath)
+		return nil, fmt.Errorf("failed to parse Go types directory: path %s does not exist", goTypesDirPath)
 	}
 
 	// Use go/packages to load and type-check the package
@@ -701,7 +701,7 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 
 	pkgs, err := packages.Load(cfg, ".")
 	if err != nil {
-		return nil, fmt.Errorf("failed to load package: %w", err)
+		return nil, fmt.Errorf("failed to load package from directory %s: %w", goTypesDirPath, err)
 	}
 
 	if len(pkgs) == 0 {
@@ -717,7 +717,7 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 			errMsgs = append(errMsgs, e.Error())
 		}
 
-		return nil, fmt.Errorf("package loading failed with errors: %s", strings.Join(errMsgs, "; "))
+		return nil, fmt.Errorf("package %s loading failed from directory %s with errors: %s", pkg.Name, goTypesDirPath, strings.Join(errMsgs, "; "))
 	}
 
 	g.l.Debug("Go types parsed successfully",
@@ -1155,7 +1155,7 @@ func (g *OpenAPICollector) extractEnumsFromConstBlock(constDecl *ast.GenDecl) er
 
 		// If we've identified this as an enum block, all constants must be exported
 		if enumTypeName != "" && !allExported {
-			return errors.New("enum const blocks must not contain unexported constants")
+			return fmt.Errorf("enum %s: const blocks must not contain unexported constants", enumTypeName)
 		}
 
 		// Skip const specs with no exported names (only before enum type is established)
@@ -1170,11 +1170,15 @@ func (g *OpenAPICollector) extractEnumsFromConstBlock(constDecl *ast.GenDecl) er
 				return ErrNoEnumType
 			}
 
-			return errors.New("all exported constants in enum const block must have explicit type declaration")
+			return fmt.Errorf("enum %s: all exported constants in enum const block must have explicit type declaration", enumTypeName)
 		}
 
 		ident, ok := valueSpec.Type.(*ast.Ident)
 		if !ok {
+			if enumTypeName != "" {
+				return fmt.Errorf("enum %s: const type must be a simple identifier, got %T", enumTypeName, valueSpec.Type)
+			}
+
 			return fmt.Errorf("const type must be a simple identifier, got %T", valueSpec.Type)
 		}
 
@@ -1283,7 +1287,7 @@ func (g *OpenAPICollector) analyzeGoType(expr ast.Expr) (FieldType, []string, er
 
 		// Reject 'any' explicitly
 		if typeName == "any" {
-			return FieldType{}, nil, errors.New("type 'any' is not allowed in API types - use concrete types instead")
+			return FieldType{}, nil, errors.New("type 'any' is not allowed in API types - use concrete types instead. Check struct fields and type aliases for 'any' usage")
 		}
 
 		// Check if it's a defined type in our types map (will be populated after first pass)
@@ -1308,7 +1312,7 @@ func (g *OpenAPICollector) analyzeGoType(expr ast.Expr) (FieldType, []string, er
 		return g.analyzeSelectorType(t)
 
 	default:
-		return FieldType{}, nil, fmt.Errorf("unsupported type expression: %T", expr)
+		return FieldType{}, nil, fmt.Errorf("unsupported type expression: %T (check for unsupported Go language features like interfaces, channels, or functions)", expr)
 	}
 }
 
@@ -1493,7 +1497,7 @@ func (g *OpenAPICollector) generateGoSource(typeInfo *TypeInfo) (string, error) 
 
 	formatted, err := format.Source([]byte(cleaned))
 	if err != nil {
-		return "", fmt.Errorf("failed to format Go source: %w", err)
+		return "", fmt.Errorf("failed to format Go source for type %s: %w", typeInfo.Name, err)
 	}
 
 	return string(formatted), nil
@@ -1614,7 +1618,7 @@ func (g *OpenAPICollector) parseDeprecation(comments string) (string, string, er
 	cleanedDesc := strings.TrimSpace(comments[:idx])
 
 	if message == "" {
-		return "", cleanedDesc, errors.New("deprecation message is empty")
+		return "", cleanedDesc, errors.New("deprecation message is empty - when using 'Deprecated:' comment, provide a message explaining why it's deprecated and what to use instead")
 	}
 
 	return message, cleanedDesc, nil
