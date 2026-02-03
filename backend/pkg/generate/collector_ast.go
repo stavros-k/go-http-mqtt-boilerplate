@@ -72,11 +72,13 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 	}, nil
 }
 
-// extractAllTypesFromGo walks the Go AST and extracts all type information in one pass.
+// extractAllTypesFromGo walks the Go AST and extracts all type information in two passes.
+// Pass 1: Extract all type names and enum metadata (no field analysis or validation).
+// Pass 2: Extract field details and validate (including map key checks that depend on g.types).
 func (g *OpenAPICollector) extractAllTypesFromGo(goParser *GoParser) error {
 	g.l.Debug("Starting type extraction from Go AST")
 
-	// Walk all files and extract type declarations
+	// Pass 1: Extract all type names and enum metadata (no field analysis)
 	for _, file := range goParser.files {
 		// Build import alias map once per file
 		imports, err := g.buildImportAliasMap(file)
@@ -85,18 +87,32 @@ func (g *OpenAPICollector) extractAllTypesFromGo(goParser *GoParser) error {
 		}
 		g.currentFileImports = imports
 
-		// First pass: extract all type declarations
-		if err := g.extractTypeDeclarations(file); err != nil {
-			return fmt.Errorf("failed to extract type declarations: %w", err)
+		if err := g.extractTypeNames(file); err != nil {
+			return fmt.Errorf("failed to extract type names: %w", err)
 		}
 
-		// Second pass: extract enums from const blocks
 		if err := g.extractConstDeclarations(file); err != nil {
 			return fmt.Errorf("failed to extract const declarations: %w", err)
 		}
 	}
 
-	g.l.Debug("Completed type extraction", slog.Int("typeCount", len(g.types)))
+	g.l.Debug("Pass 1 complete: extracted type names", slog.Int("typeCount", len(g.types)))
+
+	// Pass 2: Extract field details and validate all types
+	for _, file := range goParser.files {
+		// Rebuild import alias map for this file
+		imports, err := g.buildImportAliasMap(file)
+		if err != nil {
+			return fmt.Errorf("failed to build import alias map: %w", err)
+		}
+		g.currentFileImports = imports
+
+		if err := g.extractTypeFields(file); err != nil {
+			return fmt.Errorf("failed to extract type fields: %w", err)
+		}
+	}
+
+	g.l.Debug("Pass 2 complete: extracted fields", slog.Int("typeCount", len(g.types)))
 
 	return nil
 }
@@ -135,8 +151,10 @@ func (g *OpenAPICollector) buildImportAliasMap(file *ast.File) (map[string]strin
 	return imports, nil
 }
 
-// extractTypeDeclarations extracts all type declarations from a single AST file.
-func (g *OpenAPICollector) extractTypeDeclarations(file *ast.File) error {
+// extractTypeNames extracts type names and basic metadata without analyzing fields.
+// This is Pass 1 - creates stub TypeInfo entries in g.types so later lookups succeed.
+// Requires g.currentFileImports to be set before calling (by extractAllTypesFromGo).
+func (g *OpenAPICollector) extractTypeNames(file *ast.File) error {
 	for _, decl := range file.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok || genDecl.Tok != token.TYPE {
@@ -151,73 +169,110 @@ func (g *OpenAPICollector) extractTypeDeclarations(file *ast.File) error {
 
 			typeName := typeSpec.Name.Name
 
-			typeInfo, err := g.extractTypeFromSpec(typeName, typeSpec, genDecl)
+			// Store the AST node for later analysis
+			g.typeASTs[typeName] = genDecl
+
+			// Extract comments
+			desc := g.extractCommentsFromDoc(genDecl.Doc)
+			deprecated, cleanedDesc, err := g.parseDeprecation(desc)
 			if err != nil {
-				return fmt.Errorf("failed to extract type %s: %w", typeName, err)
+				return fmt.Errorf("failed to parse deprecation info for type %s: %w", typeName, err)
 			}
 
-			g.types[typeName] = typeInfo
+			// Create stub TypeInfo (no field analysis yet)
+			g.types[typeName] = &TypeInfo{
+				Name:        typeName,
+				Description: cleanedDesc,
+				Deprecated:  deprecated,
+				// Kind, Fields, UnderlyingType, etc. will be set in Pass 2
+			}
 		}
 	}
 
 	return nil
 }
 
-// extractTypeFromSpec extracts TypeInfo from a Go type spec.
-func (g *OpenAPICollector) extractTypeFromSpec(name string, typeSpec *ast.TypeSpec, genDecl *ast.GenDecl) (*TypeInfo, error) {
-	g.l.Debug("Extracting type", slog.String("name", name))
+// extractTypeFields extracts field details for all types in a file.
+// This is Pass 2 - fills in Kind, Fields, UnderlyingType, etc. for each type.
+// Requires g.currentFileImports to be set before calling (by extractAllTypesFromGo).
+func (g *OpenAPICollector) extractTypeFields(file *ast.File) error {
+	for _, decl := range file.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.TYPE {
+			continue
+		}
 
-	// Store the AST node for later Go source generation
-	g.typeASTs[name] = genDecl
+		for _, spec := range genDecl.Specs {
+			typeSpec, ok := spec.(*ast.TypeSpec)
+			if !ok {
+				continue
+			}
 
-	// Extract comments
-	desc := g.extractCommentsFromDoc(genDecl.Doc)
+			typeName := typeSpec.Name.Name
+			typeInfo := g.types[typeName]
 
-	deprecated, cleanedDesc, err := g.parseDeprecation(desc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse deprecation info for type %s: %w", name, err)
+			// Analyze the type and populate fields
+			if err := g.analyzeTypeSpec(typeName, typeSpec, typeInfo); err != nil {
+				return fmt.Errorf("failed to analyze type %s: %w", typeName, err)
+			}
+		}
 	}
 
-	typeInfo := &TypeInfo{
-		Name:        name,
-		Description: cleanedDesc,
-		Deprecated:  deprecated,
-	}
+	return nil
+}
 
-	// Determine type based on the type expression
+// extractStructTypeFields extracts struct fields and populates the TypeInfo.
+// Wrapper for extractStructType that matches the error-only return signature.
+func (g *OpenAPICollector) extractStructTypeFields(name string, structType *ast.StructType, typeInfo *TypeInfo) error {
+	_, err := g.extractStructType(name, structType, typeInfo)
+	return err
+}
+
+// analyzeTypeSpec extracts type spec details and populates the existing TypeInfo with field info.
+// This is called in Pass 2 after all type names are extracted.
+func (g *OpenAPICollector) analyzeTypeSpec(name string, typeSpec *ast.TypeSpec, typeInfo *TypeInfo) error {
+	g.l.Debug("Analyzing type fields", slog.String("name", name))
+
+	// Determine type based on the type expression and populate fields
 	switch t := typeSpec.Type.(type) {
 	case *ast.StructType:
-		return g.extractStructType(name, t, typeInfo)
+		return g.extractStructTypeFields(name, t, typeInfo)
 	case *ast.Ident:
 		// Type alias to another type (e.g., type MyString string)
-		typeInfo.Kind = TypeKindAlias
+		// Don't overwrite Kind if this is already identified as an enum
+		if !isEnumKind(typeInfo.Kind) {
+			typeInfo.Kind = TypeKindAlias
+		}
 
 		// Extract the underlying type information
 		underlyingType, refs, err := g.analyzeGoType(t)
 		if err != nil {
-			return nil, fmt.Errorf("failed to analyze underlying type for alias %s: %w", name, err)
+			return fmt.Errorf("failed to analyze underlying type for alias %s: %w", name, err)
 		}
 
 		typeInfo.UnderlyingType = &underlyingType
 		typeInfo.References = refs
 
-		return typeInfo, nil
+		return nil
 	case *ast.ArrayType, *ast.MapType:
 		// Arrays and maps as top-level types are treated as aliases
-		typeInfo.Kind = TypeKindAlias
+		// Don't overwrite Kind if this is already identified as an enum
+		if !isEnumKind(typeInfo.Kind) {
+			typeInfo.Kind = TypeKindAlias
+		}
 
 		// Extract the underlying type information
 		underlyingType, refs, err := g.analyzeGoType(typeSpec.Type)
 		if err != nil {
-			return nil, fmt.Errorf("failed to analyze underlying type for alias %s: %w", name, err)
+			return fmt.Errorf("failed to analyze underlying type for alias %s: %w", name, err)
 		}
 
 		typeInfo.UnderlyingType = &underlyingType
 		typeInfo.References = refs
 
-		return typeInfo, nil
+		return nil
 	default:
-		return nil, fmt.Errorf("unsupported type %s: %T (please use struct, type alias, or basic types)", name, typeSpec.Type)
+		return fmt.Errorf("unsupported type %s: %T (please use struct, type alias, or basic types)", name, typeSpec.Type)
 	}
 }
 
