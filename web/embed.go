@@ -78,10 +78,6 @@ func (wa *WebApp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-func (wa *WebApp) URLBase() string {
-	return wa.urlBase
-}
-
 // Handler returns an http.Handler that serves the WebApp at the given path.
 func (wa *WebApp) Handler(path string) http.Handler {
 	return http.StripPrefix(path, wa)
