@@ -66,6 +66,20 @@ components:
                 - teamID
                 - users
             type: object
+        HealthResponse:
+            additionalProperties: false
+            description: HealthResponse is the response to a health check request.
+            properties:
+                database:
+                    description: Status of the database connection
+                    type: boolean
+                mqtt:
+                    description: Status of the MQTT broker connection
+                    type: boolean
+            required:
+                - database
+                - mqtt
+            type: object
         PingResponse:
             additionalProperties: false
             description: PingResponse is the response to a ping request.
@@ -111,9 +125,64 @@ components:
 info:
     description: Local API Documentation
     title: Local API
-    version: vdev (unknown)
+    version: vdev (7390ba3-dirty)
 openapi: 3.0.3
 paths:
+    /api/health:
+        get:
+            description: Check if the server is healthy
+            operationId: health
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            examples:
+                                Success:
+                                    value:
+                                        database: true
+                                        mqtt: true
+                            schema:
+                                $ref: '#/components/schemas/HealthResponse'
+                    description: Successful health response
+                "413":
+                    content:
+                        application/json:
+                            examples:
+                                Request Entity Too Large:
+                                    value:
+                                        message: Request body too large (max 1MB)
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Request entity too large
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Internal server error
+                "503":
+                    content:
+                        application/json:
+                            examples:
+                                Both Unavailable:
+                                    value:
+                                        database: false
+                                        mqtt: false
+                                Database Unavailable:
+                                    value:
+                                        database: false
+                                        mqtt: true
+                                MQTT Unavailable:
+                                    value:
+                                        database: true
+                                        mqtt: false
+                            schema:
+                                $ref: '#/components/schemas/HealthResponse'
+                    description: Server unavailable
+            summary: Check server health
+            tags:
+                - Core
     /api/ping:
         get:
             description: Check if the server is alive
@@ -145,13 +214,13 @@ paths:
                     content:
                         application/json:
                             examples:
-                                Database unreachable:
+                                Internal Server Error:
                                     value:
-                                        message: Database unreachable
-                                        status: ERROR
+                                        message: Internal Server Error
+                                        requestID: 00000000-0000-0000-0000-000000000000
                             schema:
-                                $ref: '#/components/schemas/PingResponse'
-                    description: Internal server error
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Internal Server Error
             summary: Ping the server
             tags:
                 - Core

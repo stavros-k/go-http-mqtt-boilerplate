@@ -2,6 +2,9 @@
 set -e
 OUTPUT_BINARY=./data/server
 
+echo "Running golangci-lint..."
+golangci-lint run --fix || true
+
 echo "Running go fix..."
 go fix ./...
 

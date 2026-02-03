@@ -56,6 +56,7 @@ func (wa *WebApp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	altSuffixes := []string{"", ".html", "/index.html"}
 	for _, suffix := range altSuffixes {
 		altPath := strings.TrimSuffix(path, "/") + suffix
+
 		f, err := fs.Stat(wa.fs, altPath)
 		if err != nil {
 			// Ignore error and try next alternative

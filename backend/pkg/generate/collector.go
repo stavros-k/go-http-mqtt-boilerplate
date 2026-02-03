@@ -384,10 +384,16 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 		return fmt.Errorf("duplicate operationID: %s", route.OperationID)
 	}
 
-	// Request type should be either `nil` or a non-zero struct type
+	// Request type should be either `nil` or a valid struct type
 	if route.Request != nil {
-		if reflect.ValueOf(route.Request.TypeValue).IsZero() {
-			return fmt.Errorf("request Type must not be zero value in route [%s]", route.OperationID)
+		// Check for nil or nil pointer
+		if route.Request.TypeValue == nil {
+			return fmt.Errorf("request TypeValue must not be nil in route [%s]", route.OperationID)
+		}
+
+		val := reflect.ValueOf(route.Request.TypeValue)
+		if val.Kind() == reflect.Pointer && val.IsNil() {
+			return fmt.Errorf("request TypeValue must not be a nil pointer in route [%s]", route.OperationID)
 		}
 
 		typeName, stringifiedExamples, err := g.processHTTPType(route.Request.TypeValue, route.Request.Examples, "request")
@@ -400,6 +406,10 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 	}
 
 	for statusCode, response := range route.Responses {
+		if response.TypeValue == nil {
+			return fmt.Errorf("response TypeValue must not be nil in route [%s]", route.OperationID)
+		}
+
 		if !reflect.ValueOf(response.TypeValue).IsZero() {
 			return fmt.Errorf("response Type must be zero value in route [%s]", route.OperationID)
 		}
@@ -533,9 +543,14 @@ func (g *OpenAPICollector) processHTTPType(typeValue any, examples map[string]an
 // processMQTTMessageType extracts type information and registers representations for an MQTT message.
 // Returns the type name and stringified examples.
 func (g *OpenAPICollector) processMQTTMessageType(operationID string, typeValue any, examples map[string]any, messageKind string) (typeName string, stringifiedExamples map[string]string, err error) {
-	// Validate type value is not zero
-	if reflect.ValueOf(typeValue).IsZero() {
-		return "", nil, fmt.Errorf("MessageType must not be zero value in %s [%s]", messageKind, operationID)
+	// Validate type value is not nil
+	if typeValue == nil {
+		return "", nil, fmt.Errorf("MessageType must not be nil in %s [%s]", messageKind, operationID)
+	}
+
+	val := reflect.ValueOf(typeValue)
+	if val.Kind() == reflect.Pointer && val.IsNil() {
+		return "", nil, fmt.Errorf("MessageType must not be a nil pointer in %s [%s]", messageKind, operationID)
 	}
 
 	// Extract type name from zero value using reflection
@@ -566,9 +581,14 @@ func (g *OpenAPICollector) processMQTTMessageType(operationID string, typeValue 
 // processMQTTTopicParameter extracts type information and registers representations for an MQTT topic parameter.
 // Returns the type name.
 func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeValue any, contextMsg string) (string, error) {
-	// Validate type value is not zero
-	if reflect.ValueOf(typeValue).IsZero() {
-		return "", fmt.Errorf("topic parameter TypeValue must not be zero value in %s [%s]", contextMsg, operationID)
+	// Validate type value is not nil
+	if typeValue == nil {
+		return "", fmt.Errorf("topic parameter TypeValue must not be nil in %s [%s]", contextMsg, operationID)
+	}
+
+	val := reflect.ValueOf(typeValue)
+	if val.Kind() == reflect.Pointer && val.IsNil() {
+		return "", fmt.Errorf("topic parameter TypeValue must not be a nil pointer in %s [%s]", contextMsg, operationID)
 	}
 
 	// Extract type name from zero value using reflection
@@ -591,8 +611,15 @@ func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeVal
 // registerExamples registers JSON representations for a slice of examples.
 func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
 	for name, ex := range examples {
-		if reflect.ValueOf(ex).IsZero() {
-			return fmt.Errorf("value for example [%s] should not be zero value", name)
+		// Check for nil values or nil pointers
+		if ex == nil {
+			return fmt.Errorf("value for example [%s] should not be nil", name)
+		}
+
+		// Check for nil pointers
+		val := reflect.ValueOf(ex)
+		if val.Kind() == reflect.Pointer && val.IsNil() {
+			return fmt.Errorf("value for example [%s] should not be a nil pointer", name)
 		}
 
 		if err := g.RegisterJSONRepresentation(ex); err != nil {
@@ -1551,6 +1578,26 @@ func (g *OpenAPICollector) buildUsedBy() {
 	// Track MQTT subscriptions
 	for _, sub := range g.mqttSubscriptions {
 		g.addUsage(sub.TypeName, sub.OperationID, "mqtt_subscription")
+	}
+
+	for _, typ := range g.types {
+		usages := make(map[string]struct{})
+		dedupedUsages := []UsageInfo{}
+
+		for _, usage := range typ.UsedBy {
+			if _, used := usages[usage.OperationID]; used {
+				continue
+			}
+
+			dedupedUsages = append(dedupedUsages, usage)
+			usages[usage.OperationID] = struct{}{}
+		}
+
+		if len(dedupedUsages) == 0 {
+			dedupedUsages = nil
+		}
+
+		typ.UsedBy = dedupedUsages
 	}
 }
 
