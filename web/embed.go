@@ -17,7 +17,7 @@ type Router interface {
 }
 
 func DocsApp() (*WebApp, error) {
-	return NewWebApp("docs", docsFS, "docs/dist", "/docs/")
+	return NewWebApp("docs", docsFS, "docs/dist", "/ui/docs/")
 }
 
 type WebApp struct {
