@@ -423,10 +423,12 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 		return fmt.Errorf("duplicate operationID: %s", route.OperationID)
 	}
 
-	// Request type should be either `nil` or a valid struct type
+	// Process request body if provided
+	// route.Request can be nil (operation has no request body)
+	// If route.Request is provided, its TypeValue must be a valid (non-nil) type
 	if route.Request != nil {
 		if isNilOrNilPointer(route.Request.TypeValue) {
-			return fmt.Errorf("request TypeValue must not be nil in route [%s]", route.OperationID)
+			return fmt.Errorf("request TypeValue must not be nil when Request is provided in route [%s]", route.OperationID)
 		}
 
 		typeName, stringifiedExamples, err := g.processHTTPType(route.Request.TypeValue, route.Request.Examples, "request")
@@ -438,13 +440,16 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 		route.Request.ExamplesStringified = stringifiedExamples
 	}
 
+	// Process responses (required - every route must have at least one response)
+	// Response TypeValue must be a zero-value struct (e.g., MyResponse{})
+	// This indicates the type without providing actual data (examples provide the data)
 	for statusCode, response := range route.Responses {
 		if isNilOrNilPointer(response.TypeValue) {
-			return fmt.Errorf("response TypeValue must not be nil in route [%s]", route.OperationID)
+			return fmt.Errorf("response TypeValue must not be nil in route [%s] for status %d", route.OperationID, statusCode)
 		}
 
 		if !isZeroValueStruct(response.TypeValue) {
-			return fmt.Errorf("response Type must be zero value struct in route [%s]", route.OperationID)
+			return fmt.Errorf("response TypeValue must be zero value struct (e.g., MyResponse{}) in route [%s] for status %d - use Examples for actual data", route.OperationID, statusCode)
 		}
 
 		resp := response
