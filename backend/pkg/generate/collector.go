@@ -409,8 +409,11 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 		if response.TypeValue == nil {
 			return fmt.Errorf("response TypeValue must not be nil in route [%s]", route.OperationID)
 		}
-
-		if !reflect.ValueOf(response.TypeValue).IsZero() {
+		val := reflect.ValueOf(response.TypeValue)
+		if val.Kind() == reflect.Pointer && val.IsNil() {
+			return fmt.Errorf("response TypeValue must not be a nil pointer in route [%s]", route.OperationID)
+		}
+		if !val.IsZero() {
 			return fmt.Errorf("response Type must be zero value in route [%s]", route.OperationID)
 		}
 
