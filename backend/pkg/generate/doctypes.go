@@ -34,6 +34,7 @@ type FieldType struct {
 	Nullable             bool       `json:"nullable"`             // For nullable types (T | null)
 	ItemsType            *FieldType `json:"itemsType"`            // For arrays: type of array elements
 	AdditionalProperties *FieldType `json:"additionalProperties"` // For maps: type of map values
+	MapKeyType           *FieldType `json:"mapKeyType"`           // For maps: type of map keys
 }
 
 // FieldInfo describes a field in a struct (used in high-level API documentation).

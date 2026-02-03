@@ -73,8 +73,8 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 }
 
 // extractAllTypesFromGo walks the Go AST and extracts all type information in two passes.
-// Pass 1: Extract all type names and enum metadata (no field analysis or validation).
-// Pass 2: Extract field details and validate (including map key checks that depend on g.types).
+// Pass 1: Extract all type names and enum metadata (no field analysis).
+// Pass 2: Extract field details for all types.
 func (g *OpenAPICollector) extractAllTypesFromGo(goParser *GoParser) error {
 	g.l.Debug("Starting type extraction from Go AST")
 
@@ -85,6 +85,7 @@ func (g *OpenAPICollector) extractAllTypesFromGo(goParser *GoParser) error {
 		if err != nil {
 			return fmt.Errorf("failed to build import alias map: %w", err)
 		}
+
 		g.currentFileImports = imports
 
 		if err := g.extractTypeNames(file); err != nil {
@@ -98,13 +99,14 @@ func (g *OpenAPICollector) extractAllTypesFromGo(goParser *GoParser) error {
 
 	g.l.Debug("Pass 1 complete: extracted type names", slog.Int("typeCount", len(g.types)))
 
-	// Pass 2: Extract field details and validate all types
+	// Pass 2: Extract field details for all types
 	for _, file := range goParser.files {
 		// Rebuild import alias map for this file
 		imports, err := g.buildImportAliasMap(file)
 		if err != nil {
 			return fmt.Errorf("failed to build import alias map: %w", err)
 		}
+
 		g.currentFileImports = imports
 
 		if err := g.extractTypeFields(file); err != nil {
@@ -177,7 +179,9 @@ func (g *OpenAPICollector) extractTypeNames(file *ast.File) error {
 			if descDoc == nil {
 				descDoc = genDecl.Doc
 			}
+
 			desc := g.extractCommentsFromDoc(descDoc)
+
 			deprecated, cleanedDesc, err := g.parseDeprecation(desc)
 			if err != nil {
 				return fmt.Errorf("failed to parse deprecation info for type %s: %w", typeName, err)
@@ -212,14 +216,57 @@ func (g *OpenAPICollector) extractTypeFields(file *ast.File) error {
 				continue
 			}
 
-			typeName := typeSpec.Name.Name
-			typeInfo := g.types[typeName]
-
-			// Analyze the type and populate fields
-			if err := g.analyzeTypeSpec(typeName, typeSpec, typeInfo); err != nil {
-				return fmt.Errorf("failed to analyze type %s: %w", typeName, err)
+			if err := g.processTypeSpecFields(typeSpec); err != nil {
+				return err
 			}
 		}
+	}
+
+	return nil
+}
+
+// processTypeSpecFields extracts field information for a single type spec.
+func (g *OpenAPICollector) processTypeSpecFields(typeSpec *ast.TypeSpec) error {
+	typeName := typeSpec.Name.Name
+	typeInfo := g.types[typeName]
+
+	// Determine type based on the type expression and populate fields
+	switch t := typeSpec.Type.(type) {
+	case *ast.StructType:
+		if err := g.extractStructTypeFields(typeName, t, typeInfo); err != nil {
+			return fmt.Errorf("failed to extract struct fields for %s: %w", typeName, err)
+		}
+
+	case *ast.Ident:
+		// Type alias to another type (e.g., type MyString string)
+		if !isEnumKind(typeInfo.Kind) {
+			typeInfo.Kind = TypeKindAlias
+		}
+
+		underlyingType, refs, err := g.analyzeGoType(t)
+		if err != nil {
+			return fmt.Errorf("failed to analyze underlying type for alias %s: %w", typeName, err)
+		}
+
+		typeInfo.UnderlyingType = &underlyingType
+		typeInfo.References = refs
+
+	case *ast.ArrayType, *ast.MapType:
+		// Arrays and maps as top-level types are treated as aliases
+		if !isEnumKind(typeInfo.Kind) {
+			typeInfo.Kind = TypeKindAlias
+		}
+
+		underlyingType, refs, err := g.analyzeGoType(typeSpec.Type)
+		if err != nil {
+			return fmt.Errorf("failed to analyze underlying type for alias %s: %w", typeName, err)
+		}
+
+		typeInfo.UnderlyingType = &underlyingType
+		typeInfo.References = refs
+
+	default:
+		return fmt.Errorf("unsupported type %s: %T (please use struct, type alias, or basic types)", typeName, typeSpec.Type)
 	}
 
 	return nil
@@ -229,55 +276,8 @@ func (g *OpenAPICollector) extractTypeFields(file *ast.File) error {
 // Wrapper for extractStructType that matches the error-only return signature.
 func (g *OpenAPICollector) extractStructTypeFields(name string, structType *ast.StructType, typeInfo *TypeInfo) error {
 	_, err := g.extractStructType(name, structType, typeInfo)
+
 	return err
-}
-
-// analyzeTypeSpec extracts type spec details and populates the existing TypeInfo with field info.
-// This is called in Pass 2 after all type names are extracted.
-func (g *OpenAPICollector) analyzeTypeSpec(name string, typeSpec *ast.TypeSpec, typeInfo *TypeInfo) error {
-	g.l.Debug("Analyzing type fields", slog.String("name", name))
-
-	// Determine type based on the type expression and populate fields
-	switch t := typeSpec.Type.(type) {
-	case *ast.StructType:
-		return g.extractStructTypeFields(name, t, typeInfo)
-	case *ast.Ident:
-		// Type alias to another type (e.g., type MyString string)
-		// Don't overwrite Kind if this is already identified as an enum
-		if !isEnumKind(typeInfo.Kind) {
-			typeInfo.Kind = TypeKindAlias
-		}
-
-		// Extract the underlying type information
-		underlyingType, refs, err := g.analyzeGoType(t)
-		if err != nil {
-			return fmt.Errorf("failed to analyze underlying type for alias %s: %w", name, err)
-		}
-
-		typeInfo.UnderlyingType = &underlyingType
-		typeInfo.References = refs
-
-		return nil
-	case *ast.ArrayType, *ast.MapType:
-		// Arrays and maps as top-level types are treated as aliases
-		// Don't overwrite Kind if this is already identified as an enum
-		if !isEnumKind(typeInfo.Kind) {
-			typeInfo.Kind = TypeKindAlias
-		}
-
-		// Extract the underlying type information
-		underlyingType, refs, err := g.analyzeGoType(typeSpec.Type)
-		if err != nil {
-			return fmt.Errorf("failed to analyze underlying type for alias %s: %w", name, err)
-		}
-
-		typeInfo.UnderlyingType = &underlyingType
-		typeInfo.References = refs
-
-		return nil
-	default:
-		return fmt.Errorf("unsupported type %s: %T (please use struct, type alias, or basic types)", name, typeSpec.Type)
-	}
 }
 
 // extractStructType extracts struct type information.
@@ -361,6 +361,7 @@ func (g *OpenAPICollector) extractFieldInfo(parentName, fieldName string, field 
 	if err != nil {
 		return FieldInfo{}, nil, fmt.Errorf("failed to generate display type for field %s.%s: %w", parentName, fieldName, err)
 	}
+
 	fieldInfo := FieldInfo{
 		Name:        tagInfo.name,
 		DisplayType: displayType,
@@ -445,9 +446,10 @@ func (g *OpenAPICollector) analyzeArrayType(t *ast.ArrayType) (FieldType, []stri
 
 // analyzeMapType handles map types (map[K]V).
 func (g *OpenAPICollector) analyzeMapType(t *ast.MapType) (FieldType, []string, error) {
-	// Validate key type - OpenAPI/JSON only supports string keys
-	if err := g.isMapKeyString(t); err != nil {
-		return FieldType{}, nil, err
+	// Extract key type for later validation (OpenAPI/JSON validation happens in openapi.go)
+	keyType, keyRefs, err := g.analyzeGoType(t.Key)
+	if err != nil {
+		return FieldType{}, nil, fmt.Errorf("failed to analyze map key type: %w", err)
 	}
 
 	valueType, valueRefs, err := g.analyzeGoType(t.Value)
@@ -455,11 +457,16 @@ func (g *OpenAPICollector) analyzeMapType(t *ast.MapType) (FieldType, []string, 
 		return FieldType{}, nil, err
 	}
 
+	// Combine references
+	allRefs := keyRefs
+	allRefs = append(allRefs, valueRefs...)
+
 	return FieldType{
 		Kind:                 FieldKindObject,
 		Type:                 "object",
+		MapKeyType:           &keyType,
 		AdditionalProperties: &valueType,
-	}, valueRefs, nil
+	}, allRefs, nil
 }
 
 // analyzeSelectorType handles external types (e.g., time.Time, types.URL).
@@ -555,36 +562,6 @@ func (g *OpenAPICollector) parseDeprecation(comments string) (string, string, er
 	}
 
 	return message, cleanedDesc, nil
-}
-
-func (g *OpenAPICollector) isMapKeyString(t *ast.MapType) error {
-	keyType, _, err := g.analyzeGoType(t.Key)
-	if err != nil {
-		return fmt.Errorf("failed to analyze map key type: %w", err)
-	}
-
-	switch keyType.Kind {
-	case FieldKindPrimitive:
-		// Check if key is a string primitive
-		if keyType.Type != "string" {
-			return fmt.Errorf("map key type %s is not a string - OpenAPI only supports string keys", keyType.Type)
-		}
-	case FieldKindReference:
-		// Check if key is a string alias
-		typeInfo, exists := g.types[keyType.Type]
-		if !exists || typeInfo.Kind != TypeKindAlias {
-			return fmt.Errorf("map key type %s must be string or a string alias - OpenAPI only supports string keys", keyType.Type)
-		}
-
-		// Check if key alias is a string primitive
-		if typeInfo.UnderlyingType == nil || typeInfo.UnderlyingType.Kind != FieldKindPrimitive || typeInfo.UnderlyingType.Type != "string" {
-			return fmt.Errorf("map key type %s must be string or a string alias - OpenAPI only supports string keys", keyType.Type)
-		}
-	default:
-		return fmt.Errorf("map key type %s is not supported - OpenAPI only supports string keys", keyType.Type)
-	}
-
-	return nil
 }
 
 // generateDisplayType creates a human-readable type string from FieldType.

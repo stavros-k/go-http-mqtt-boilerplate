@@ -15,15 +15,21 @@ import (
 )
 
 const (
-	// OpenAPIVersion is the OpenAPI specification version used for generated specs.
-	OpenAPIVersion = "3.0.3"
+	// openAPIVersion is the OpenAPI specification version used for generated specs.
+	openAPIVersion = "3.0.3"
+
+	// OpenAPI type names.
+	typeString  = "string"
+	typeNumber  = "number"
+	typeInteger = "integer"
+	typeBoolean = "boolean"
 )
 
 // isPrimitiveType checks if a type name represents a valid OpenAPI primitive type.
 // Note: "array" and "object" are excluded as they require additional schema information.
 func isPrimitiveType(typeName string) bool {
 	switch typeName {
-	case "string", "number", "integer", "boolean":
+	case typeString, typeNumber, typeInteger, typeBoolean:
 		return true
 	default:
 		return false
@@ -197,6 +203,27 @@ func buildReferenceSchemaFromFieldType(ft FieldType) (*openapi3.SchemaRef, error
 	return applyNullable(ref, ft.Nullable)
 }
 
+// validateMapKeyIsString validates that a map key type is a string (OpenAPI constraint).
+// OpenAPI/JSON only supports string keys in objects (maps).
+func validateMapKeyIsString(keyType FieldType) error {
+	switch keyType.Kind {
+	case FieldKindPrimitive:
+		if keyType.Type != typeString {
+			return fmt.Errorf("map key type %s is not a string - OpenAPI only supports string keys", keyType.Type)
+		}
+
+		return nil
+
+	case FieldKindReference:
+		// Key is a reference to another type - this should be validated during schema generation
+		// when we have access to g.types to resolve the reference
+		return fmt.Errorf("map key type %s is a reference - validation requires type resolution (not yet implemented)", keyType.Type)
+
+	default:
+		return fmt.Errorf("map key kind %s is not supported - OpenAPI only supports string keys", keyType.Kind)
+	}
+}
+
 // buildObjectSchemaFromFieldType builds a schema for object/map types.
 func buildObjectSchemaFromFieldType(ft FieldType, description string) (*openapi3.SchemaRef, error) {
 	schema := &openapi3.Schema{
@@ -208,6 +235,15 @@ func buildObjectSchemaFromFieldType(ft FieldType, description string) (*openapi3
 
 	// Handle additionalProperties for map types
 	if ft.AdditionalProperties != nil {
+		// Validate map key type (OpenAPI/JSON only supports string keys)
+		if ft.MapKeyType == nil {
+			return nil, errors.New("map type has AdditionalProperties but MapKeyType is nil - this is a bug")
+		}
+
+		if err := validateMapKeyIsString(*ft.MapKeyType); err != nil {
+			return nil, err
+		}
+
 		additionalPropsSchema, err := buildSchemaFromFieldType(*ft.AdditionalProperties, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build additionalProperties schema: %w", err)
@@ -287,9 +323,9 @@ func buildEnumSchema(typeInfo *TypeInfo) (*openapi3.Schema, error) {
 
 	switch typeInfo.Kind {
 	case TypeKindStringEnum:
-		schemaType = "string"
+		schemaType = typeString
 	case TypeKindNumberEnum:
-		schemaType = "integer"
+		schemaType = typeInteger
 	default:
 		return nil, fmt.Errorf("unsupported enum kind: %s", typeInfo.Kind)
 	}
@@ -365,7 +401,7 @@ func buildComponentSchemas(doc *APIDocumentation) (openapi3.Schemas, error) {
 // generateOpenAPISpec generates a complete OpenAPI specification from documentation.
 func generateOpenAPISpec(doc *APIDocumentation) (*openapi3.T, error) {
 	spec := &openapi3.T{
-		OpenAPI:    OpenAPIVersion,
+		OpenAPI:    openAPIVersion,
 		Info:       &openapi3.Info{},
 		Paths:      openapi3.NewPaths(),
 		Components: &openapi3.Components{Schemas: make(openapi3.Schemas)},

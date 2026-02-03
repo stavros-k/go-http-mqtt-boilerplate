@@ -1,5 +1,5 @@
 import type { Route } from "next";
-import { TbBrandGolang, TbBrandTypescript, TbFileCode, TbInfoCircle, TbJson, TbFileText } from "react-icons/tb";
+import { TbBrandGolang, TbBrandTypescript, TbFileCode, TbFileText, TbInfoCircle, TbJson } from "react-icons/tb";
 import { BackButton } from "@/components/back-button";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CodeWrapper } from "@/components/code-wrapper";
