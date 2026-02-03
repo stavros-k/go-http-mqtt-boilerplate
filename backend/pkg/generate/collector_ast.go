@@ -192,7 +192,7 @@ func (g *OpenAPICollector) extractStructType(name string, structType *ast.Struct
 
 	for _, field := range structType.Fields.List {
 		if len(field.Names) == 0 {
-			return nil, fmt.Errorf("field of struct type %s has no name", name)
+			return nil, fmt.Errorf("embedded fields are not supported in struct type %s", name)
 		}
 
 		for _, fieldName := range field.Names {
