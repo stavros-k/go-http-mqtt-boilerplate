@@ -31,8 +31,12 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 
 	// Use go/packages to load and type-check the package
 	cfg := &packages.Config{
-		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
-			packages.NeedTypes | packages.NeedTypesInfo,
+		Mode: packages.NeedName |
+			packages.NeedFiles |
+			packages.NeedSyntax |
+			packages.NeedTypes |
+			packages.NeedTypesInfo |
+			packages.NeedImports,
 		Dir: goTypesDirPath,
 	}
 
@@ -72,19 +76,24 @@ func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, er
 func (g *OpenAPICollector) extractAllTypesFromGo(goParser *GoParser) error {
 	g.l.Debug("Starting type extraction from Go AST")
 
-	errs := make([]error, 0, len(goParser.files)*2)
-
 	// Walk all files and extract type declarations
 	for _, file := range goParser.files {
+		// Build import alias map once per file
+		imports, err := g.buildImportAliasMap(file)
+		if err != nil {
+			return fmt.Errorf("failed to build import alias map: %w", err)
+		}
+		g.currentFileImports = imports
+
 		// First pass: extract all type declarations
-		errs = append(errs, g.extractTypeDeclarations(file)...)
+		if err := g.extractTypeDeclarations(file); err != nil {
+			return fmt.Errorf("failed to extract type declarations: %w", err)
+		}
 
 		// Second pass: extract enums from const blocks
-		errs = append(errs, g.extractConstDeclarations(file)...)
-	}
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+		if err := g.extractConstDeclarations(file); err != nil {
+			return fmt.Errorf("failed to extract const declarations: %w", err)
+		}
 	}
 
 	g.l.Debug("Completed type extraction", slog.Int("typeCount", len(g.types)))
@@ -92,10 +101,42 @@ func (g *OpenAPICollector) extractAllTypesFromGo(goParser *GoParser) error {
 	return nil
 }
 
-// extractTypeDeclarations extracts all type declarations from a single AST file.
-func (g *OpenAPICollector) extractTypeDeclarations(file *ast.File) []error {
-	var errs []error
+// buildImportAliasMap extracts import aliases from an AST file.
+// Returns a map from package identifier (as used in code) to full import path.
+func (g *OpenAPICollector) buildImportAliasMap(file *ast.File) (map[string]string, error) {
+	imports := make(map[string]string)
 
+	for _, imp := range file.Imports {
+		// Get the import path without quotes
+		importPath := strings.Trim(imp.Path.Value, `"`)
+
+		var pkgIdentifier string
+		if imp.Name != nil {
+			// Explicit alias (e.g., import customtime "time")
+			pkgIdentifier = imp.Name.Name
+		} else {
+			// No explicit alias - get the actual package name from go/packages
+			// This handles cases like "gopkg.in/yaml.v3" where package name is "yaml", not "v3"
+			importedPkg, exists := g.goParser.pkg.Imports[importPath]
+			if !exists {
+				return nil, fmt.Errorf("import %s not found in go/packages Imports map", importPath)
+			}
+
+			if importedPkg.Name == "" {
+				return nil, fmt.Errorf("package name is empty for import %s", importPath)
+			}
+
+			pkgIdentifier = importedPkg.Name
+		}
+
+		imports[pkgIdentifier] = importPath
+	}
+
+	return imports, nil
+}
+
+// extractTypeDeclarations extracts all type declarations from a single AST file.
+func (g *OpenAPICollector) extractTypeDeclarations(file *ast.File) error {
 	for _, decl := range file.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok || genDecl.Tok != token.TYPE {
@@ -112,16 +153,14 @@ func (g *OpenAPICollector) extractTypeDeclarations(file *ast.File) []error {
 
 			typeInfo, err := g.extractTypeFromSpec(typeName, typeSpec, genDecl)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("failed to extract type %s: %w", typeName, err))
-
-				continue
+				return fmt.Errorf("failed to extract type %s: %w", typeName, err)
 			}
 
 			g.types[typeName] = typeInfo
 		}
 	}
 
-	return errs
+	return nil
 }
 
 // extractTypeFromSpec extracts TypeInfo from a Go type spec.
@@ -371,18 +410,23 @@ func (g *OpenAPICollector) analyzeSelectorType(t *ast.SelectorExpr) (FieldType, 
 		return FieldType{}, nil, fmt.Errorf("unsupported selector expression with base type %T - expected package.Type format", t.X)
 	}
 
-	fullType := pkgIdent.Name + "." + t.Sel.Name
+	// Get the package alias as it appears in the code
+	pkgAlias := pkgIdent.Name
+	typeName := t.Sel.Name
 
-	// Check for known external types
-	format, exists := g.externalTypeFormats[fullType]
+	// Resolve the alias to the full import path
+	importPath, exists := g.currentFileImports[pkgAlias]
 	if !exists {
-		// Try with full package path
-		fullTypePath := "http-mqtt-boilerplate/backend/pkg/" + pkgIdent.Name + "." + t.Sel.Name
-		format, exists = g.externalTypeFormats[fullTypePath]
+		return FieldType{}, nil, fmt.Errorf("package alias %s not found in imports - cannot resolve external type %s.%s", pkgAlias, pkgAlias, typeName)
+	}
 
-		if !exists {
-			return FieldType{}, nil, fmt.Errorf("unknown external type %s - please add it to externalTypeFormats map in NewOpenAPICollector", fullType)
-		}
+	// Build the full type key using import path
+	fullTypeKey := importPath + "." + typeName
+
+	// Look up the type format using the full import path
+	format, exists := g.externalTypeFormats[fullTypeKey]
+	if !exists {
+		return FieldType{}, nil, fmt.Errorf("unknown external type %s.%s (resolved to %s) - please add it to externalTypeFormats map in NewOpenAPICollector using the full import path as the key", pkgAlias, typeName, fullTypeKey)
 	}
 
 	return FieldType{

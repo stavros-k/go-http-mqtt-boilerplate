@@ -103,6 +103,9 @@ type OpenAPICollector struct {
 	typeASTs  map[string]*ast.GenDecl // Type declaration AST nodes, keyed by type name
 	constASTs map[string]*ast.GenDecl // Const block AST nodes for enums, keyed by type name
 
+	// Import resolution for current file being processed
+	currentFileImports map[string]string // Maps package alias to full import path
+
 	docsFilePath        string // Path to write documentation JSON file
 	openAPISpecFilePath string // Path to write OpenAPI YAML file
 
@@ -120,7 +123,6 @@ func normalizeLocalPackagePath(path string) string {
 
 	return "./" + path
 }
-
 
 type OpenAPICollectorOptions struct {
 	GoTypesDirPath               string // Path to Go types file for parsing
@@ -158,13 +160,14 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 	l.Debug("Creating doc collector", slog.String("goTypesDirPath", goTypesDirPath))
 
 	docCollector := &OpenAPICollector{
-		l:                 l,
-		types:             make(map[string]*TypeInfo),
-		httpOps:           make(map[string]*RouteInfo),
-		mqttPublications:  make(map[string]*MQTTPublicationInfo),
-		mqttSubscriptions: make(map[string]*MQTTSubscriptionInfo),
-		typeASTs:          make(map[string]*ast.GenDecl),
-		constASTs:         make(map[string]*ast.GenDecl),
+		l:                  l,
+		types:              make(map[string]*TypeInfo),
+		httpOps:            make(map[string]*RouteInfo),
+		mqttPublications:   make(map[string]*MQTTPublicationInfo),
+		mqttSubscriptions:  make(map[string]*MQTTSubscriptionInfo),
+		typeASTs:           make(map[string]*ast.GenDecl),
+		constASTs:          make(map[string]*ast.GenDecl),
+		currentFileImports: make(map[string]string),
 		externalTypeFormats: map[string]string{
 			"time.Time": FormatDateTime,
 			"http-mqtt-boilerplate/backend/pkg/types.URL": FormatURI,
@@ -281,7 +284,6 @@ func newTSParser(l *slog.Logger, goTypesDirPath string) (*TSParser, error) {
 	return tsParser, nil
 }
 
-
 // Generate generates both the OpenAPI spec YAML and the docs JSON file.
 func (g *OpenAPICollector) Generate() error {
 	// Compute type relationships
@@ -316,7 +318,6 @@ func (g *OpenAPICollector) Generate() error {
 
 	return nil
 }
-
 
 func (g *OpenAPICollector) getDocumentation() *APIDocumentation {
 	return &APIDocumentation{
