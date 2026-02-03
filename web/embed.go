@@ -16,7 +16,9 @@ type Router interface {
 	Mount(pattern string, handler http.Handler)
 }
 
-func DocsApp() (*WebApp, error) { return NewWebApp("docs", docsFS, "docs/dist", "/docs/") }
+func DocsApp() (*WebApp, error) {
+	return NewWebApp("docs", docsFS, "docs/dist", "/docs/")
+}
 
 type WebApp struct {
 	name    string
@@ -54,15 +56,20 @@ func (wa *WebApp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	altSuffixes := []string{"", ".html", "/index.html"}
 	for _, suffix := range altSuffixes {
 		altPath := strings.TrimSuffix(path, "/") + suffix
-		if f, err := fs.Stat(wa.fs, altPath); err == nil {
-			if f.IsDir() {
-				continue
-			}
-
-			http.ServeFileFS(w, r, wa.fs, altPath)
-
-			return
+		f, err := fs.Stat(wa.fs, altPath)
+		if err != nil {
+			// Ignore error and try next alternative
+			continue
 		}
+
+		if f.IsDir() {
+			// Ignore directories
+			continue
+		}
+
+		http.ServeFileFS(w, r, wa.fs, altPath)
+
+		return
 	}
 
 	wa.l.Warn("File not found", slog.String("path", path))
@@ -80,7 +87,7 @@ func (wa *WebApp) Handler(path string) http.Handler {
 	return http.StripPrefix(path, wa)
 }
 
-// Register registers the WebApp with the given ServeMux.
+// Register registers the WebApp with the given router.
 func (wa *WebApp) Register(mux Router, l *slog.Logger) {
 	wa.l = l.With(slog.String("app", wa.name), slog.String("urlBase", wa.urlBase), slog.String("component", "file-server"))
 	wa.l.Info("Registering web app")
