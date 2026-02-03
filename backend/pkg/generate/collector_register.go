@@ -14,9 +14,9 @@ func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 		return err
 	}
 
-	// Validate operationID is unique
-	if _, exists := g.httpOps[route.OperationID]; exists {
-		return fmt.Errorf("duplicate operationID: %s", route.OperationID)
+	// Validate operationID is unique across g.httpOps, g.mqttPublications, and g.mqttSubscriptions
+	if err := g.validateUniqueOperationID(route.OperationID); err != nil {
+		return err
 	}
 
 	// Process request body if provided
