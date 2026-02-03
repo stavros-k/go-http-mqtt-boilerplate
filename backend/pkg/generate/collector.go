@@ -317,7 +317,7 @@ func newTSParser(l *slog.Logger, goTypesDirPath string) (*TSParser, error) {
 	return tsParser, nil
 }
 
-func (g *OpenAPICollector) SerializeTSNode(name string) (string, error) {
+func (g *OpenAPICollector) serializeTSNode(name string) (string, error) {
 	node, exists := g.tsParser.ts.Node(name)
 	if !exists {
 		return "", fmt.Errorf("type %s not found in TypeScript AST", name)
@@ -384,9 +384,9 @@ func stringifyExamples(examples map[string]any) map[string]string {
 	return stringified
 }
 
-// RegisterJSONRepresentation registers the JSON representation of a type value.
+// registerJSONRepresentation registers the JSON representation of a type value.
 // It makes sure to only store the largest representation for the type.
-func (g *OpenAPICollector) RegisterJSONRepresentation(value any) error {
+func (g *OpenAPICollector) registerJSONRepresentation(value any) error {
 	typeName, err := extractTypeNameFromValue(value)
 	if err != nil {
 		return fmt.Errorf("failed to extract type name: %w", err)
@@ -560,7 +560,7 @@ func (g *OpenAPICollector) processHTTPType(typeValue any, examples map[string]an
 	// Mark as used by HTTP (for OpenAPI spec filtering)
 	g.markTypeAsHTTP(typeName)
 
-	if err := g.RegisterJSONRepresentation(typeValue); err != nil {
+	if err := g.registerJSONRepresentation(typeValue); err != nil {
 		return "", nil, fmt.Errorf("failed to register JSON representation for %s type [%s]: %w", contextMsg, typeName, err)
 	}
 
@@ -596,7 +596,7 @@ func (g *OpenAPICollector) processMQTTMessageType(operationID string, typeValue 
 	g.markTypeAsMQTT(typeName)
 
 	// Register JSON representation
-	if err := g.RegisterJSONRepresentation(typeValue); err != nil {
+	if err := g.registerJSONRepresentation(typeValue); err != nil {
 		return "", nil, fmt.Errorf("failed to register JSON representation for message type: %w", err)
 	}
 
@@ -629,7 +629,7 @@ func (g *OpenAPICollector) processMQTTTopicParameter(operationID string, typeVal
 	g.markTypeAsMQTT(typeName)
 
 	// Register JSON representation
-	if err := g.RegisterJSONRepresentation(typeValue); err != nil {
+	if err := g.registerJSONRepresentation(typeValue); err != nil {
 		return "", fmt.Errorf("failed to register JSON representation for topic parameter: %w", err)
 	}
 
@@ -643,7 +643,7 @@ func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
 			return fmt.Errorf("value for example [%s] should not be nil", name)
 		}
 
-		if err := g.RegisterJSONRepresentation(ex); err != nil {
+		if err := g.registerJSONRepresentation(ex); err != nil {
 			return err
 		}
 	}
@@ -1471,7 +1471,7 @@ func (g *OpenAPICollector) generateTypesRepresentations() error {
 		typeInfo.Representations.Go = goSource
 
 		// TypeScript Representation
-		tsSource, err := g.SerializeTSNode(name)
+		tsSource, err := g.serializeTSNode(name)
 		if err != nil {
 			return fmt.Errorf("failed to serialize TS representation for %s: %w", name, err)
 		}

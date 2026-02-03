@@ -217,6 +217,31 @@ function EnumValuesSection({ enumValues }: { enumValues: EnumValue[] | null }) {
     );
 }
 
+// Helper function to get human-readable format descriptions
+function getFormatDescription(format: string): string | null {
+    const formatDescriptions: Record<string, string> = {
+        "date-time": "RFC3339 date-time format (e.g., 2023-01-15T14:30:00Z)",
+        "date": "Full date format (e.g., 2023-01-15)",
+        "time": "Time format (e.g., 14:30:00)",
+        "email": "Email address format",
+        "uri": "Uniform Resource Identifier",
+        "url": "Uniform Resource Locator",
+        "uuid": "Universally Unique Identifier",
+        "int32": "32-bit integer",
+        "int64": "64-bit integer",
+        "float": "Single-precision floating-point number",
+        "double": "Double-precision floating-point number",
+        "byte": "Base64-encoded binary data",
+        "binary": "Binary data",
+        "password": "Password (hidden in UI)",
+        "ipv4": "IPv4 address",
+        "ipv6": "IPv6 address",
+        "hostname": "Internet hostname",
+    };
+
+    return formatDescriptions[format] || null;
+}
+
 function FieldItem({ field }: { field: FieldMetadata }) {
     const displayType = "displayType" in field ? field.displayType : "";
     // Use typeInfo.type for actual type reference, fallback to displayType
@@ -225,6 +250,10 @@ function FieldItem({ field }: { field: FieldMetadata }) {
 
     // Check if this field has additionalProperties (map/dictionary type)
     const additionalProps = field.typeInfo?.additionalProperties;
+
+    // Get format information
+    const format = field.typeInfo?.format;
+    const formatDescription = format ? getFormatDescription(format) : null;
 
     return (
         <div className='rounded-lg border-2 border-border-primary bg-bg-secondary p-4 transition-all duration-200 hover:border-accent-blue/50'>
@@ -265,6 +294,26 @@ function FieldItem({ field }: { field: FieldMetadata }) {
 
             {"description" in field && field.description && (
                 <p className='mt-2 text-sm text-text-tertiary'>{String(field.description)}</p>
+            )}
+
+            {format && (
+                <div className='mt-3 rounded-lg border border-border-primary bg-bg-tertiary p-3'>
+                    <div className='flex items-start gap-3'>
+                        <div className='flex flex-col gap-1'>
+                            <div className='flex items-center gap-2'>
+                                <span className='font-semibold text-text-secondary text-xs uppercase tracking-wide'>
+                                    Format
+                                </span>
+                                <code className='rounded border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 font-mono font-semibold text-purple-400 text-xs'>
+                                    {format}
+                                </code>
+                            </div>
+                            {formatDescription && (
+                                <p className='text-text-tertiary text-xs'>{formatDescription}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
 
             {additionalProps && (
