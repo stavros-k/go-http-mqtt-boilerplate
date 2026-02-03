@@ -1585,12 +1585,13 @@ func (g *OpenAPICollector) buildUsedBy() {
 		dedupedUsages := []UsageInfo{}
 
 		for _, usage := range typ.UsedBy {
-			if _, used := usages[usage.OperationID]; used {
+			key := fmt.Sprintf("%s:%s", usage.OperationID, usage.Role)
+			if _, used := usages[key]; used {
 				continue
 			}
 
 			dedupedUsages = append(dedupedUsages, usage)
-			usages[usage.OperationID] = struct{}{}
+			usages[key] = struct{}{}
 		}
 
 		if len(dedupedUsages) == 0 {
