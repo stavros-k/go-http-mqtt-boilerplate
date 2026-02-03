@@ -8,44 +8,6 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/utils"
 )
 
-// stringifyExamples converts examples to stringified JSON.
-func stringifyExamples(examples map[string]any) map[string]string {
-	stringified := make(map[string]string)
-	for name, example := range examples {
-		stringified[name] = string(utils.MustToJSONIndent(example))
-	}
-
-	return stringified
-}
-
-// registerJSONRepresentation registers the JSON representation of a type value.
-// It makes sure to only store the largest representation for the type.
-func (g *OpenAPICollector) registerJSONRepresentation(value any) error {
-	typeName, err := extractTypeNameFromValue(value)
-	if err != nil {
-		return fmt.Errorf("failed to extract type name: %w", err)
-	}
-
-	// Skip primitive types - they don't need JSON representations
-	if _, isPrimitive := g.primitiveTypeMapping[typeName]; isPrimitive {
-		return nil
-	}
-
-	typeInfo, ok := g.types[typeName]
-	if !ok {
-		return fmt.Errorf("failed to register JSON representation: type %s not found in types map", typeName)
-	}
-
-	representation := string(utils.MustToJSONIndent(value))
-
-	// If stored representation is empty or shorter, update it
-	if typeInfo.Representations.JSON == "" || len(representation) > len(typeInfo.Representations.JSON) {
-		typeInfo.Representations.JSON = representation
-	}
-
-	return nil
-}
-
 func (g *OpenAPICollector) RegisterRoute(route *RouteInfo) error {
 	// Validate operationID format
 	if err := validateOperationIDFormat(route.OperationID); err != nil {
@@ -183,6 +145,34 @@ func (g *OpenAPICollector) RegisterMQTTSubscription(sub *MQTTSubscriptionInfo) e
 	return nil
 }
 
+// registerJSONRepresentation registers the JSON representation of a type value.
+// It makes sure to only store the largest representation for the type.
+func (g *OpenAPICollector) registerJSONRepresentation(value any) error {
+	typeName, err := extractTypeNameFromValue(value)
+	if err != nil {
+		return fmt.Errorf("failed to extract type name: %w", err)
+	}
+
+	// Skip primitive types - they don't need JSON representations
+	if _, isPrimitive := g.primitiveTypeMapping[typeName]; isPrimitive {
+		return nil
+	}
+
+	typeInfo, ok := g.types[typeName]
+	if !ok {
+		return fmt.Errorf("failed to register JSON representation: type %s not found in types map", typeName)
+	}
+
+	representation := string(utils.MustToJSONIndent(value))
+
+	// If stored representation is empty or shorter, update it
+	if typeInfo.Representations.JSON == "" || len(representation) > len(typeInfo.Representations.JSON) {
+		typeInfo.Representations.JSON = representation
+	}
+
+	return nil
+}
+
 // processHTTPType extracts type name, marks it as HTTP, and registers JSON representations.
 // Returns the extracted type name.
 func (g *OpenAPICollector) processHTTPType(typeValue any, examples map[string]any, contextMsg string) (string, map[string]string, error) {
@@ -285,19 +275,6 @@ func (g *OpenAPICollector) registerExamples(examples map[string]any) error {
 	return nil
 }
 
-// validateOperationIDFormat checks that an operationID contains only characters a-z, A-Z.
-func validateOperationIDFormat(operationID string) error {
-	if operationID == "" {
-		return errors.New("operationID cannot be empty")
-	}
-
-	if !IsASCIILetterString(operationID) {
-		return fmt.Errorf("operationID %q contains invalid characters (only characters a-z, A-Z are allowed)", operationID)
-	}
-
-	return nil
-}
-
 // validateUniqueOperationID checks that an operationID is not already used.
 func (g *OpenAPICollector) validateUniqueOperationID(operationID string) error {
 	if _, exists := g.mqttPublications[operationID]; exists {
@@ -364,4 +341,27 @@ func (g *OpenAPICollector) markTypeAsHTTP(typeName string) {
 // markTypeAsMQTT marks a type and all its referenced types as used by MQTT.
 func (g *OpenAPICollector) markTypeAsMQTT(typeName string) {
 	g.markTypeAsUsedBy(typeName, ProtocolMQTT)
+}
+
+// stringifyExamples converts examples to stringified JSON.
+func stringifyExamples(examples map[string]any) map[string]string {
+	stringified := make(map[string]string)
+	for name, example := range examples {
+		stringified[name] = string(utils.MustToJSONIndent(example))
+	}
+
+	return stringified
+}
+
+// validateOperationIDFormat checks that an operationID contains only characters a-z, A-Z.
+func validateOperationIDFormat(operationID string) error {
+	if operationID == "" {
+		return errors.New("operationID cannot be empty")
+	}
+
+	if !IsASCIILetterString(operationID) {
+		return fmt.Errorf("operationID %q contains invalid characters (only characters a-z, A-Z are allowed)", operationID)
+	}
+
+	return nil
 }
