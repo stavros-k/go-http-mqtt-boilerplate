@@ -125,7 +125,7 @@ components:
 info:
     description: Local API Documentation
     title: Local API
-    version: vdev (unknown)
+    version: vdev (06a8ecb-dirty)
 openapi: 3.0.3
 paths:
     /api/health:

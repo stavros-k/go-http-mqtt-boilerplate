@@ -221,22 +221,22 @@ function EnumValuesSection({ enumValues }: { enumValues: EnumValue[] | null }) {
 function getFormatDescription(format: string): string | null {
     const formatDescriptions: Record<string, string> = {
         "date-time": "RFC3339 date-time format (e.g., 2023-01-15T14:30:00Z)",
-        "date": "Full date format (e.g., 2023-01-15)",
-        "time": "Time format (e.g., 14:30:00)",
-        "email": "Email address format",
-        "uri": "Uniform Resource Identifier",
-        "url": "Uniform Resource Locator",
-        "uuid": "Universally Unique Identifier",
-        "int32": "32-bit integer",
-        "int64": "64-bit integer",
-        "float": "Single-precision floating-point number",
-        "double": "Double-precision floating-point number",
-        "byte": "Base64-encoded binary data",
-        "binary": "Binary data",
-        "password": "Password (hidden in UI)",
-        "ipv4": "IPv4 address",
-        "ipv6": "IPv6 address",
-        "hostname": "Internet hostname",
+        date: "Full date format (e.g., 2023-01-15)",
+        time: "Time format (e.g., 14:30:00)",
+        email: "Email address format",
+        uri: "Uniform Resource Identifier",
+        url: "Uniform Resource Locator",
+        uuid: "Universally Unique Identifier",
+        int32: "32-bit integer",
+        int64: "64-bit integer",
+        float: "Single-precision floating-point number",
+        double: "Double-precision floating-point number",
+        byte: "Base64-encoded binary data",
+        binary: "Binary data",
+        password: "Password (hidden in UI)",
+        ipv4: "IPv4 address",
+        ipv6: "IPv6 address",
+        hostname: "Internet hostname",
     };
 
     return formatDescriptions[format] || null;
@@ -308,9 +308,7 @@ function FieldItem({ field }: { field: FieldMetadata }) {
                                     {format}
                                 </code>
                             </div>
-                            {formatDescription && (
-                                <p className='text-text-tertiary text-xs'>{formatDescription}</p>
-                            )}
+                            {formatDescription && <p className='text-text-tertiary text-xs'>{formatDescription}</p>}
                         </div>
                     </div>
                 </div>
