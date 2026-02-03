@@ -172,8 +172,12 @@ func (g *OpenAPICollector) extractTypeNames(file *ast.File) error {
 			// Store the AST node for later analysis
 			g.typeASTs[typeName] = genDecl
 
-			// Extract comments
-			desc := g.extractCommentsFromDoc(genDecl.Doc)
+			// Extract comments - prefer typeSpec.Doc (for grouped declarations) over genDecl.Doc (fallback)
+			descDoc := typeSpec.Doc
+			if descDoc == nil {
+				descDoc = genDecl.Doc
+			}
+			desc := g.extractCommentsFromDoc(descDoc)
 			deprecated, cleanedDesc, err := g.parseDeprecation(desc)
 			if err != nil {
 				return fmt.Errorf("failed to parse deprecation info for type %s: %w", typeName, err)
