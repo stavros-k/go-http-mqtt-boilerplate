@@ -24,6 +24,11 @@ func (g *OpenAPICollector) computeTypeRelationships() {
 
 // buildReferencedBy builds the inverse of References for all types.
 func (g *OpenAPICollector) buildReferencedBy() {
+	// Clear all ReferencedBy slices to ensure idempotent behavior
+	for _, typeInfo := range g.types {
+		typeInfo.ReferencedBy = nil
+	}
+
 	// Track which types were modified so we only sort those
 	modifiedTypes := make(map[string]struct{})
 
@@ -44,6 +49,11 @@ func (g *OpenAPICollector) buildReferencedBy() {
 
 // buildUsedBy tracks which operations use each type.
 func (g *OpenAPICollector) buildUsedBy() {
+	// Clear all UsedBy slices to ensure idempotent behavior
+	for _, typeInfo := range g.types {
+		typeInfo.UsedBy = nil
+	}
+
 	// Track HTTP operations
 	for _, route := range g.httpOps {
 		// Track request type

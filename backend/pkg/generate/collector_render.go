@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// generateTypesRepresentations generates Go source representations for all types as a post-processing step.
+// generateTypesRepresentations generates Go, TypeScript, and JSON Schema representations for all types as a post-processing step.
 func (g *OpenAPICollector) generateTypesRepresentations() error {
 	g.l.Debug("Generating all representations for all types", slog.Int("typeCount", len(g.types)))
 
