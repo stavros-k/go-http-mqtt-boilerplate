@@ -259,9 +259,13 @@ func (g *OpenAPICollector) extractFieldInfo(parentName, fieldName string, field 
 		return FieldInfo{}, nil, fmt.Errorf("failed to parse deprecation info for field %s.%s: %w", parentName, fieldName, err)
 	}
 
+	displayType, err := generateDisplayType(fieldType)
+	if err != nil {
+		return FieldInfo{}, nil, fmt.Errorf("failed to generate display type for field %s.%s: %w", parentName, fieldName, err)
+	}
 	fieldInfo := FieldInfo{
 		Name:        tagInfo.name,
-		DisplayType: generateDisplayType(fieldType),
+		DisplayType: displayType,
 		TypeInfo:    fieldType,
 		Description: cleanedFieldDesc,
 		Deprecated:  fieldDeprecated,
@@ -481,29 +485,32 @@ func (g *OpenAPICollector) isMapKeyString(t *ast.MapType) error {
 }
 
 // generateDisplayType creates a human-readable type string from FieldType.
-func generateDisplayType(ft FieldType) string {
+func generateDisplayType(ft FieldType) (string, error) {
 	switch ft.Kind {
 	case FieldKindReference, FieldKindEnum:
-		return ft.Type
+		return ft.Type, nil
 	case FieldKindPrimitive:
 		caser := cases.Title(language.English)
 
-		return caser.String(ft.Type)
+		return caser.String(ft.Type), nil
 
 	case FieldKindArray:
 		if ft.ItemsType != nil {
-			itemDisplay := generateDisplayType(*ft.ItemsType)
+			itemDisplay, err := generateDisplayType(*ft.ItemsType)
+			if err != nil {
+				return "", err
+			}
 
-			return itemDisplay + "[]"
+			return itemDisplay + "[]", nil
 		}
 
-		return "Array"
+		return "Array", nil
 
 	case FieldKindObject:
-		return "Object"
+		return "Object", nil
 
 	default:
-		panic(fmt.Sprintf("unexpected field kind: %s, should have been caught by type analysis", ft.Kind))
+		return "", fmt.Errorf("unexpected field kind: %s, should have been caught by type analysis", ft.Kind)
 	}
 }
 
