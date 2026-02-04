@@ -1,30 +1,10 @@
 package api
 
 import (
-	"bufio"
 	"log/slog"
-	"net"
 	"net/http"
 	"time"
-
-	"github.com/google/uuid"
 )
-
-// RequestIDMiddleware extracts or generates a request ID and
-func (s *Handler) RequestIDMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Get or generate request ID
-		requestID := r.Header.Get(RequestIDHeader)
-		if requestID == "" {
-			requestID = uuid.New().String()
-		}
-
-		// Store request ID in context
-		ctx := WithRequestID(r.Context(), requestID)
-
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
 
 // responseWriter wraps http.ResponseWriter to capture status code.
 type responseWriter struct {
@@ -53,27 +33,61 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return rw.ResponseWriter.Write(b)
 }
 
-// Flush implements http.Flusher if the underlying ResponseWriter supports it.
-func (rw *responseWriter) Flush() {
-	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
-		flusher.Flush()
-	}
-}
+// wrapResponseWriter wraps an http.ResponseWriter and returns both the base
+// responseWriter (for accessing statusCode) and the properly-typed wrapper
+// that only exposes optional interfaces the underlying ResponseWriter supports.
+func wrapResponseWriter(w http.ResponseWriter) (*responseWriter, http.ResponseWriter) {
+	base := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-// Hijack implements http.Hijacker if the underlying ResponseWriter supports it.
-func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if hijacker, ok := rw.ResponseWriter.(http.Hijacker); ok {
-		return hijacker.Hijack()
-	}
-	return nil, nil, http.ErrNotSupported
-}
+	flusher, canFlush := w.(http.Flusher)
+	hijacker, canHijack := w.(http.Hijacker)
+	pusher, canPush := w.(http.Pusher)
 
-// Push implements http.Pusher if the underlying ResponseWriter supports it.
-func (rw *responseWriter) Push(target string, opts *http.PushOptions) error {
-	if pusher, ok := rw.ResponseWriter.(http.Pusher); ok {
-		return pusher.Push(target, opts)
+	// Return the appropriate wrapper based on supported interfaces
+	switch {
+	case canFlush && canHijack && canPush:
+		return base, &struct {
+			*responseWriter
+			http.Flusher
+			http.Hijacker
+			http.Pusher
+		}{base, flusher, hijacker, pusher}
+	case canFlush && canHijack:
+		return base, &struct {
+			*responseWriter
+			http.Flusher
+			http.Hijacker
+		}{base, flusher, hijacker}
+	case canFlush && canPush:
+		return base, &struct {
+			*responseWriter
+			http.Flusher
+			http.Pusher
+		}{base, flusher, pusher}
+	case canHijack && canPush:
+		return base, &struct {
+			*responseWriter
+			http.Hijacker
+			http.Pusher
+		}{base, hijacker, pusher}
+	case canFlush:
+		return base, &struct {
+			*responseWriter
+			http.Flusher
+		}{base, flusher}
+	case canHijack:
+		return base, &struct {
+			*responseWriter
+			http.Hijacker
+		}{base, hijacker}
+	case canPush:
+		return base, &struct {
+			*responseWriter
+			http.Pusher
+		}{base, pusher}
+	default:
+		return base, base
 	}
-	return http.ErrNotSupported
 }
 
 // LoggerMiddleware adds a request-scoped logger to the context and logs requests.
@@ -94,7 +108,7 @@ func (s *Handler) LoggerMiddleware(next http.Handler) http.Handler {
 		// Store logger and request ID in context
 		ctx := WithLogger(r.Context(), reqLogger)
 
-		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		base, wrapped := wrapResponseWriter(w)
 
 		// Log request start
 		start := time.Now()
@@ -107,7 +121,7 @@ func (s *Handler) LoggerMiddleware(next http.Handler) http.Handler {
 		// Log request completion
 		duration := time.Since(start)
 		reqLogger.Info("request completed",
-			slog.Int("status", wrapped.statusCode), slog.Duration("duration", duration),
+			slog.Int("status", base.statusCode), slog.Duration("duration", duration),
 		)
 	})
 }
