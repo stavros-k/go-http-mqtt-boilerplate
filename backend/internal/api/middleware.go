@@ -1,12 +1,30 @@
 package api
 
 import (
+	"bufio"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// RequestIDMiddleware extracts or generates a request ID and
+func (s *Handler) RequestIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get or generate request ID
+		requestID := r.Header.Get(RequestIDHeader)
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
+
+		// Store request ID in context
+		ctx := WithRequestID(r.Context(), requestID)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 
 // responseWriter wraps http.ResponseWriter to capture status code.
 type responseWriter struct {
@@ -35,19 +53,27 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return rw.ResponseWriter.Write(b)
 }
 
-func (s *Handler) RequestIDMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Get or generate request ID
-		requestID := r.Header.Get(RequestIDHeader)
-		if requestID == "" {
-			requestID = uuid.New().String()
-		}
+// Flush implements http.Flusher if the underlying ResponseWriter supports it.
+func (rw *responseWriter) Flush() {
+	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
 
-		// Store request ID in context
-		ctx := WithRequestID(r.Context(), requestID)
+// Hijack implements http.Hijacker if the underlying ResponseWriter supports it.
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, http.ErrNotSupported
+}
 
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+// Push implements http.Pusher if the underlying ResponseWriter supports it.
+func (rw *responseWriter) Push(target string, opts *http.PushOptions) error {
+	if pusher, ok := rw.ResponseWriter.(http.Pusher); ok {
+		return pusher.Push(target, opts)
+	}
+	return http.ErrNotSupported
 }
 
 // LoggerMiddleware adds a request-scoped logger to the context and logs requests.
