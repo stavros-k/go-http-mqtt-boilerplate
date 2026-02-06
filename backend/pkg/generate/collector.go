@@ -191,7 +191,7 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 		return nil, fmt.Errorf("failed to get database stats: %w", err)
 	}
 
-	docCollector.database.TableCount = dbStats.TableCount
+	docCollector.database.Stats = dbStats
 
 	goParser, err := docCollector.parseGoTypesDir(goTypesDirPath)
 	if err != nil {

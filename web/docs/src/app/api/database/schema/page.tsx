@@ -9,7 +9,7 @@ export async function generateMetadata() {
 }
 
 export default function DatabaseSchema() {
-    const tableCount = docs.database.tableCount || 0;
+    const tables = docs.database.stats?.tables || [];
 
     return (
         <div className='flex-1 overflow-y-auto p-10'>
@@ -24,26 +24,179 @@ export default function DatabaseSchema() {
                 </div>
             </div>
 
-            <div className='mb-8'>
-                <div className='inline-block rounded-xl border-2 border-border-primary bg-bg-secondary p-6'>
-                    <div className='flex items-center gap-4'>
-                        <div className='text-center'>
-                            <div className='mb-1 font-bold text-4xl text-accent-blue'>{tableCount}</div>
-                            <div className='font-semibold text-sm text-text-secondary'>
-                                {tableCount === 1 ? "Table" : "Tables"}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {tables && (
+                <div className='mb-8 space-y-8'>
+                    <h2 className='font-bold text-2xl text-text-primary'>Tables</h2>
+                    {tables.map((table) => (
+                        <CardBoxWrapper
+                            key={table.name}
+                            title={table.name}>
+                            <div className='space-y-6'>
+                                {/* Columns Section */}
+                                <div>
+                                    <h3 className='mb-3 font-semibold text-lg text-text-secondary'>Columns</h3>
+                                    <div className='overflow-x-auto'>
+                                        <table className='w-full border-separate border-spacing-0'>
+                                            <thead>
+                                                <tr className='bg-bg-secondary'>
+                                                    <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                        Name
+                                                    </th>
+                                                    <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                        Type
+                                                    </th>
+                                                    <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                        Nullable
+                                                    </th>
+                                                    <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                        Primary Key
+                                                    </th>
+                                                    <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                        Default
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {table.columns?.map((column) => (
+                                                    <tr
+                                                        key={column.name}
+                                                        className='hover:bg-bg-secondary/50'>
+                                                        <td className='border-border-primary border-b px-4 py-3 font-mono text-sm text-text-primary'>
+                                                            {column.name}
+                                                        </td>
+                                                        <td className='border-border-primary border-b px-4 py-3 font-mono text-sm text-text-secondary'>
+                                                            {column.type}
+                                                        </td>
+                                                        <td className='border-border-primary border-b px-4 py-3 text-sm'>
+                                                            {column.not_null ? (
+                                                                <span className='rounded-full bg-red-500/20 px-2 py-1 font-medium text-red-400 text-xs'>
+                                                                    NO
+                                                                </span>
+                                                            ) : (
+                                                                <span className='rounded-full bg-green-500/20 px-2 py-1 font-medium text-green-400 text-xs'>
+                                                                    YES
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className='border-border-primary border-b px-4 py-3 text-sm'>
+                                                            {column.primary_key ? (
+                                                                <span className='rounded-full bg-accent-blue/20 px-2 py-1 font-medium text-accent-blue text-xs'>
+                                                                    YES
+                                                                </span>
+                                                            ) : (
+                                                                <span className='text-text-tertiary'>-</span>
+                                                            )}
+                                                        </td>
+                                                        <td className='border-border-primary border-b px-4 py-3 font-mono text-sm text-text-tertiary'>
+                                                            {"default" in column && column.default
+                                                                ? column.default
+                                                                : "-"}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
 
-            <CardBoxWrapper title='Schema'>
-                <CodeWrapper
-                    code={docs.database.schema}
-                    label={{ text: "schema.sql" }}
-                    lang='sql'
-                />
-            </CardBoxWrapper>
+                                {/* Foreign Keys Section */}
+                                {table.foreign_keys && (
+                                    <div>
+                                        <h3 className='mb-3 font-semibold text-lg text-text-secondary'>Foreign Keys</h3>
+                                        <div className='overflow-x-auto'>
+                                            <table className='w-full border-separate border-spacing-0'>
+                                                <thead>
+                                                    <tr className='bg-bg-secondary'>
+                                                        <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                            Column
+                                                        </th>
+                                                        <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                            References
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {table.foreign_keys.map((fk, idx) => (
+                                                        <tr
+                                                            key={`${fk.table}.${fk.to}-${idx}`}
+                                                            className='hover:bg-bg-secondary/50'>
+                                                            <td className='border-border-primary border-b px-4 py-3 font-mono text-sm text-text-primary'>
+                                                                {fk.from}
+                                                            </td>
+                                                            <td className='border-border-primary border-b px-4 py-3 font-mono text-sm text-text-secondary'>
+                                                                {fk.table}.{fk.to}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Indexes Section */}
+                                {table.indexes && (
+                                    <div>
+                                        <h3 className='mb-3 font-semibold text-lg text-text-secondary'>Indexes</h3>
+                                        <div className='overflow-x-auto'>
+                                            <table className='w-full border-separate border-spacing-0'>
+                                                <thead>
+                                                    <tr className='bg-bg-secondary'>
+                                                        <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                            Name
+                                                        </th>
+                                                        <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                            Columns
+                                                        </th>
+                                                        <th className='border-border-primary border-b-2 px-4 py-3 text-left font-semibold text-sm text-text-secondary'>
+                                                            Unique
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {table.indexes.map((index) => (
+                                                        <tr
+                                                            key={index.name}
+                                                            className='hover:bg-bg-secondary/50'>
+                                                            <td className='border-border-primary border-b px-4 py-3 font-mono text-sm text-text-primary'>
+                                                                {index.name}
+                                                            </td>
+                                                            <td className='border-border-primary border-b px-4 py-3 font-mono text-sm text-text-secondary'>
+                                                                {index.columns?.join(", ") || "-"}
+                                                            </td>
+                                                            <td className='border-border-primary border-b px-4 py-3 text-sm'>
+                                                                {index.unique ? (
+                                                                    <span className='rounded-full bg-accent-blue/20 px-2 py-1 font-medium text-accent-blue text-xs'>
+                                                                        YES
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className='rounded-full bg-gray-500/20 px-2 py-1 font-medium text-gray-400 text-xs'>
+                                                                        NO
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </CardBoxWrapper>
+                    ))}
+                </div>
+            )}
+
+            <div className='mt-8'>
+                <CardBoxWrapper title='Raw Schema'>
+                    <CodeWrapper
+                        code={docs.database.schema}
+                        label={{ text: "schema.sql" }}
+                        lang='sql'
+                    />
+                </CardBoxWrapper>
+            </div>
         </div>
     );
 }

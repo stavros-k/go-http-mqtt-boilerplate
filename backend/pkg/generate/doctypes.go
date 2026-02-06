@@ -171,6 +171,37 @@ type ServerInfo struct {
 }
 
 type Database struct {
-	Schema     string `json:"schema"`
-	TableCount int    `json:"tableCount"`
+	Schema string        `json:"schema"`
+	Stats  DatabaseStats `json:"stats"`
+}
+
+type DatabaseStats struct {
+	Tables []Table `json:"tables"`
+}
+
+type Table struct {
+	Name        string       `json:"name"`
+	Columns     []Column     `json:"columns"`
+	ForeignKeys []ForeignKey `json:"foreign_keys,omitempty"`
+	Indexes     []Index      `json:"indexes,omitempty"`
+}
+
+type Column struct {
+	Name       string  `json:"name"`
+	Type       string  `json:"type"`
+	NotNull    bool    `json:"not_null"`
+	Default    *string `json:"default,omitempty"`
+	PrimaryKey bool    `json:"primary_key"`
+}
+
+type ForeignKey struct {
+	From  string `json:"from"`
+	Table string `json:"table"`
+	To    string `json:"to"`
+}
+
+type Index struct {
+	Name    string   `json:"name"`
+	Unique  bool     `json:"unique"`
+	Columns []string `json:"columns"`
 }
