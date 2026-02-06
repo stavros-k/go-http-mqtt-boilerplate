@@ -92,6 +92,7 @@ func New() (*Config, error) {
 
 	switch dbDialect {
 	case dialect.SQLite:
+		// TODO: Set a common set of PRAGMA settings for SQLite connections
 		dbConnString = filepath.Join(dataDir, "database.sqlite")
 	case dialect.PostgreSQL:
 		host := getStringEnv(EnvDBHost, "localhost")

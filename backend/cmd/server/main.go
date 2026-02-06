@@ -56,7 +56,6 @@ func main() {
 		fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
 	}
 
-	// TODO: Set a common set of PRAGMA settings for SQLite connections
 	db, err := sql.Open(config.Dialect.Driver(), config.Database)
 	fatalIfErr(logger, err)
 
