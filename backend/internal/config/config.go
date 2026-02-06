@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"io"
 	"log/slog"
 	"net"
@@ -43,7 +42,6 @@ type Config struct {
 	Generate  bool
 	DataDir   string
 	Database  string
-	Dialect   dialect.Dialect
 	LogLevel  slog.Leveler
 	LogOutput io.Writer
 
@@ -57,7 +55,7 @@ type Config struct {
 	MQTTPassword string
 }
 
-func New(dbDialect dialect.Dialect) (*Config, error) {
+func New() (*Config, error) {
 	// Get data directory
 	dataDir := getStringEnv(EnvDataDir, "data")
 
@@ -80,42 +78,27 @@ func New(dbDialect dialect.Dialect) (*Config, error) {
 		logOutput = f
 	}
 
-	if err := dbDialect.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid database dialect: %w", err)
-	}
+	// Build PostgreSQL connection string
+	host := getStringEnv(EnvDBHost, "localhost")
+	port := getIntEnv(EnvDBPort, 5432)
+	dbName := getStringEnv(EnvDBName, "postgres")
+	user := getStringEnv(EnvDBUser, "postgres")
+	password := getStringEnv(EnvDBPass, "postgres")
+	sslmode := getStringEnv(EnvDBSSLMode, "disable")
 
-	// Build database connection string based on dialect
-	var dbConnString string
-
-	switch dbDialect {
-	case dialect.SQLite:
-		// TODO: Set a common set of PRAGMA settings for SQLite connections
-		dbConnString = filepath.Join(dataDir, "database.sqlite")
-	case dialect.PostgreSQL:
-		host := getStringEnv(EnvDBHost, "localhost")
-		port := getIntEnv(EnvDBPort, 5432)
-		dbName := getStringEnv(EnvDBName, "cloud")
-		user := getStringEnv(EnvDBUser, "cloud")
-		password := getStringEnv(EnvDBPass, "")
-		sslmode := getStringEnv(EnvDBSSLMode, "disable")
-
-		dbConnString = fmt.Sprintf(
-			"postgresql://%s:%s@%s/%s?sslmode=%s",
-			url.QueryEscape(user),
-			url.QueryEscape(password),
-			net.JoinHostPort(host, strconv.Itoa(port)),
-			url.PathEscape(dbName), url.QueryEscape(sslmode),
-		)
-	default:
-		return nil, fmt.Errorf("unsupported dialect: %s", dbDialect)
-	}
+	dbConnString := fmt.Sprintf(
+		"postgresql://%s:%s@%s/%s?sslmode=%s",
+		url.QueryEscape(user),
+		url.QueryEscape(password),
+		net.JoinHostPort(host, strconv.Itoa(port)),
+		url.PathEscape(dbName), url.QueryEscape(sslmode),
+	)
 
 	return &Config{
 		Port:           getIntEnv(EnvPort, 8080),
 		Generate:       getBoolEnv(EnvGenerate, false),
 		DataDir:        dataDir,
 		Database:       dbConnString,
-		Dialect:        dbDialect,
 		LogLevel:       getLogLevelEnv(EnvLogLevel, slog.LevelInfo),
 		LogOutput:      logOutput,
 		MQTTBrokerPort: getIntEnv(EnvMQTTBrokerPort, 1883),

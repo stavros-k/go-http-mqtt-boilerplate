@@ -14,12 +14,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"http-mqtt-boilerplate/backend/internal/apicommon"
-	"http-mqtt-boilerplate/backend/internal/cloudapi"
+	cloudapi "http-mqtt-boilerplate/backend/internal/cloud/api"
+	clouddb "http-mqtt-boilerplate/backend/internal/cloud/gen"
+	cloudservices "http-mqtt-boilerplate/backend/internal/cloud/services"
 	"http-mqtt-boilerplate/backend/internal/config"
-	clouddb "http-mqtt-boilerplate/backend/internal/database/clouddb/gen"
-	cloudservices "http-mqtt-boilerplate/backend/internal/services/cloud"
-	"http-mqtt-boilerplate/backend/pkg/dialect"
+	"http-mqtt-boilerplate/backend/internal/migrations"
+	sharedapi "http-mqtt-boilerplate/backend/internal/shared/api"
 	"http-mqtt-boilerplate/backend/pkg/generate"
 	"http-mqtt-boilerplate/backend/pkg/migrator"
 	"http-mqtt-boilerplate/backend/pkg/router"
@@ -36,12 +36,16 @@ func main() {
 	sigCtx, sigCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer sigCancel()
 
-	config, err := config.New(dialect.PostgreSQL)
+	config, err := config.New()
 	if err != nil {
 		fatalIfErr(slog.Default(), fmt.Errorf("failed to create config: %w", err))
 	}
 
-	defer utils.LogOnError(slog.Default(), config.Close, "failed to close config")
+	defer func() {
+		if err := config.Close(); err != nil {
+			slog.Default().Error("failed to close config", utils.ErrAttr(err))
+		}
+	}()
 
 	// Initialize logger
 	logger := getLogger(config)
@@ -130,7 +134,7 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *cloudapi.H
 	l.Info("Registering HTTP handlers...")
 
 	// Create middleware handler
-	mw := apicommon.NewMiddlewareHandler(l)
+	mw := sharedapi.NewMiddlewareHandler(l)
 
 	rb.Route("/api", func(rb *router.RouteBuilder) {
 		// Add request ID
@@ -161,13 +165,13 @@ func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector,
 
 	return generate.NewOpenAPICollector(l, generate.OpenAPICollectorOptions{
 		GoTypesDirPaths: []string{
-			"backend/pkg/types/common",   // Common types (ErrorResponse, etc.)
-			"backend/pkg/types/cloudapi", // Cloud-specific types
+			"backend/internal/shared/types",    // Shared types (ErrorResponse, PingResponse, etc.)
+			"backend/internal/cloud/api/types", // Cloud API types
 		},
-		DatabaseSchemaFileOutputPath: "api_cloud/schema.sql",
-		DocsFileOutputPath:           "api_cloud/api_docs.json",
-		OpenAPISpecOutputPath:        "api_cloud/openapi.yaml",
-		Dialect:                      c.Dialect,
+		DatabaseSchemaFileOutputPath: "docs/cloud/schema.sql",
+		DocsFileOutputPath:           "docs/cloud/api_docs.json",
+		OpenAPISpecOutputPath:        "docs/cloud/openapi.yaml",
+		Deployment:                   "cloud",
 		APIInfo: generate.APIInfo{
 			Title:       "Cloud API",
 			Version:     utils.GetVersionShort(),
@@ -203,10 +207,10 @@ func fatalIfErr(l *slog.Logger, err error) {
 }
 
 func runMigrations(l *slog.Logger, c *config.Config) error {
-	l.Info("Running database migrations", slog.String("dialect", c.Dialect.String()))
+	l.Info("Running database migrations")
 
-	// Create migrator
-	mig, err := migrator.New(l, c.Dialect, c.Dialect.MigrationFS(), c.Database)
+	// Create migrator with shared + cloud migration directories
+	mig, err := migrator.New(l, c.Database, migrations.GetFS(), "shared/migrations", "cloud/migrations")
 	if err != nil {
 		return fmt.Errorf("failed to create migrator: %w", err)
 	}

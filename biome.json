@@ -14,7 +14,7 @@
             "!dist",
             "!build",
             "!package-lock.json",
-            "!api_docs.json",
+            "!**/api_docs.json",
             "!test.json",
             "!**/testdata",
             "!**/ws-client/generated.ts"

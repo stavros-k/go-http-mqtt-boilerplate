@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"os"
@@ -28,6 +27,34 @@ import (
 var (
 	ErrFieldSkipped = errors.New("field skipped")
 )
+
+// externalType represents a type from outside the types directories.
+type externalType struct {
+	fullPath      string                         // e.g., "http-mqtt-boilerplate/backend/pkg/utils.URL"
+	openAPIFormat string                         // OpenAPI format (e.g., FormatURI)
+	gutsOverride  func() bindings.ExpressionType // Custom guts type override function
+}
+
+// getExternalTypeMappings returns the mappings for external types.
+// These types are not defined in the types directories but need special handling.
+func getExternalTypeMappings() []externalType {
+	return []externalType{
+		{
+			fullPath:      "time.Time",
+			openAPIFormat: FormatDateTime,
+			gutsOverride: func() bindings.ExpressionType {
+				return utils.Ptr(bindings.KeywordString)
+			},
+		},
+		{
+			fullPath:      "http-mqtt-boilerplate/backend/pkg/utils.URL",
+			openAPIFormat: FormatURI,
+			gutsOverride: func() bindings.ExpressionType {
+				return utils.Ptr(bindings.KeywordString)
+			},
+		},
+	}
+}
 
 // isNilOrNilPointer checks if a value is nil or a nil pointer.
 // Returns true if the value should be rejected (is nil).
@@ -126,11 +153,11 @@ func normalizeLocalPackagePath(path string) string {
 }
 
 type OpenAPICollectorOptions struct {
-	GoTypesDirPaths              []string        // Paths to Go types directories for parsing (e.g., common types + API-specific types)
-	DocsFileOutputPath           string          // Path for generated API docs JSON file
-	DatabaseSchemaFileOutputPath string          // Path for generated DB schema SQL file
-	OpenAPISpecOutputPath        string          // Path for generated OpenAPI YAML file
-	Dialect                      dialect.Dialect // Database dialect
+	GoTypesDirPaths              []string // Paths to Go types directories for parsing (e.g., common types + API-specific types)
+	DocsFileOutputPath           string   // Path for generated API docs JSON file
+	DatabaseSchemaFileOutputPath string   // Path for generated DB schema SQL file
+	OpenAPISpecOutputPath        string   // Path for generated OpenAPI YAML file
+	Deployment                   string   // Deployment type: "local" or "cloud"
 	APIInfo                      APIInfo
 }
 
@@ -164,32 +191,36 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 
 	l.Debug("Creating doc collector", slog.Any("goTypesDirPaths", goTypesDirPaths))
 
-	docCollector := &OpenAPICollector{
-		l:                  l,
-		types:              make(map[string]*TypeInfo),
-		httpOps:            make(map[string]*RouteInfo),
-		mqttPublications:   make(map[string]*MQTTPublicationInfo),
-		mqttSubscriptions:  make(map[string]*MQTTSubscriptionInfo),
-		typeASTs:           make(map[string]*ast.GenDecl),
-		constASTs:          make(map[string]*ast.GenDecl),
-		currentFileImports: make(map[string]string),
-		externalTypeFormats: map[string]string{
-			"time.Time": FormatDateTime,
-			"http-mqtt-boilerplate/backend/pkg/types.URL": FormatURI,
-		},
-		docsFilePath:        opts.DocsFileOutputPath,
-		openAPISpecFilePath: opts.OpenAPISpecOutputPath,
-		apiInfo:             opts.APIInfo,
+	externalTypeFormats := make(map[string]string, len(getExternalTypeMappings()))
 
+	gutsOverrides := make(map[string]guts.TypeOverride, len(getExternalTypeMappings()))
+	for _, m := range getExternalTypeMappings() {
+		externalTypeFormats[m.fullPath] = m.openAPIFormat
+		gutsOverrides[m.fullPath] = m.gutsOverride
+	}
+
+	docCollector := &OpenAPICollector{
+		l:                    l,
+		types:                make(map[string]*TypeInfo),
+		httpOps:              make(map[string]*RouteInfo),
+		mqttPublications:     make(map[string]*MQTTPublicationInfo),
+		mqttSubscriptions:    make(map[string]*MQTTSubscriptionInfo),
+		typeASTs:             make(map[string]*ast.GenDecl),
+		constASTs:            make(map[string]*ast.GenDecl),
+		currentFileImports:   make(map[string]string),
+		externalTypeFormats:  externalTypeFormats,
+		docsFilePath:         opts.DocsFileOutputPath,
+		openAPISpecFilePath:  opts.OpenAPISpecOutputPath,
+		apiInfo:              opts.APIInfo,
 		primitiveTypeMapping: getPrimitiveTypeMappings(),
 	}
 
-	dbSchema, err := docCollector.GenerateDatabaseSchema(opts.Dialect, opts.DatabaseSchemaFileOutputPath)
+	dbSchema, err := docCollector.GenerateDatabaseSchema(opts.Deployment, opts.DatabaseSchemaFileOutputPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate database schema: %w", err)
 	}
 
-	docCollector.database.Dialect = opts.Dialect.String()
+	docCollector.database.Dialect = "postgres"
 	docCollector.database.Schema = dbSchema
 
 	// Parse all directories at once using parseGoTypesDirs
@@ -201,7 +232,7 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 	docCollector.goParser = goParser
 
 	// Create TypeScript parser for all directories
-	tsParser, err := newTSParser(l, goTypesDirPaths)
+	tsParser, err := newTSParser(l, goTypesDirPaths, gutsOverrides)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TypeScript parser: %w", err)
 	}
@@ -219,7 +250,7 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 }
 
 // newTSParser creates a TypeScript parser using guts for the specified Go types directories.
-func newTSParser(l *slog.Logger, goTypesDirPaths []string) (*TSParser, error) {
+func newTSParser(l *slog.Logger, goTypesDirPaths []string, gutsOverrides map[string]guts.TypeOverride) (*TSParser, error) {
 	l.Debug("Parsing Go types directories", slog.Any("paths", goTypesDirPaths))
 
 	goParser, err := guts.NewGolangParser()
@@ -228,14 +259,7 @@ func newTSParser(l *slog.Logger, goTypesDirPaths []string) (*TSParser, error) {
 	}
 
 	goParser.PreserveComments()
-	goParser.IncludeCustomDeclaration(map[string]guts.TypeOverride{
-		"time.Time": func() bindings.ExpressionType {
-			return utils.Ptr(bindings.KeywordString)
-		},
-		"http-mqtt-boilerplate/backend/pkg/types.URL": func() bindings.ExpressionType {
-			return utils.Ptr(bindings.KeywordString)
-		},
-	})
+	goParser.IncludeCustomDeclaration(gutsOverrides)
 
 	// Validate and include all directories
 	for _, goTypesDirPath := range goTypesDirPaths {
