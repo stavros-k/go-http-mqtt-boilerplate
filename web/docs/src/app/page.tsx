@@ -29,6 +29,21 @@ const mqttTypeCount = Object.values(docs.types).filter((type) => {
 
 const tableCount = docs.database.stats.tables.length || 0;
 
+// Calculate total number of columns across all tables
+const columnCount = docs.database.stats.tables.reduce((total, table) => {
+    return total + (table.columns?.length || 0);
+}, 0);
+
+// Calculate total number of foreign keys across all tables
+const foreignKeyCount = docs.database.stats.tables.reduce((total, table) => {
+    return total + (table.foreignKeys?.length || 0);
+}, 0);
+
+// Calculate total number of indexes across all tables
+const indexCount = docs.database.stats.tables.reduce((total, table) => {
+    return total + (table.indexes?.length || 0);
+}, 0);
+
 // Get unique paths for route count
 const uniquePaths = new Set(operations.map((op) => op.path));
 const routeCount = uniquePaths.size;
@@ -230,8 +245,24 @@ export default function Home() {
                                 </div>
                                 <div className='font-bold text-lg text-text-primary'>Database</div>
                             </div>
-                            <div className='mb-2 font-bold text-4xl text-info-text'>{tableCount}</div>
-                            <p className='text-text-secondary text-xs'>Table{tableCount !== 1 ? "s" : ""}</p>
+                            <div className='flex items-center justify-between'>
+                                <div>
+                                    <div className='mb-1 font-bold text-2xl text-info-text'>{tableCount}</div>
+                                    <p className='text-text-secondary text-xs'>Table{tableCount !== 1 ? "s" : ""}</p>
+                                </div>
+                                <div>
+                                    <div className='mb-1 font-bold text-2xl text-info-text'>{columnCount}</div>
+                                    <p className='text-text-secondary text-xs'>Column{columnCount !== 1 ? "s" : ""}</p>
+                                </div>
+                                <div>
+                                    <div className='mb-1 font-bold text-2xl text-info-text'>{foreignKeyCount}</div>
+                                    <p className='text-text-secondary text-xs'>Foreign Key{foreignKeyCount !== 1 ? "s" : ""}</p>
+                                </div>
+                                <div>
+                                    <div className='mb-1 font-bold text-2xl text-info-text'>{indexCount}</div>
+                                    <p className='text-text-secondary text-xs'>Index{indexCount !== 1 ? "es" : ""}</p>
+                                </div>
+                            </div>
                         </div>
                     </Link>
                 </div>
