@@ -2,18 +2,15 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"http-mqtt-boilerplate/backend/internal/api"
 	"http-mqtt-boilerplate/backend/internal/config"
-	sqlitegen "http-mqtt-boilerplate/backend/internal/database/sqlite/gen"
-	mqttapi "http-mqtt-boilerplate/backend/internal/mqtt"
+	postgresgen "http-mqtt-boilerplate/backend/internal/database/postgres/gen"
 	"http-mqtt-boilerplate/backend/internal/services"
 	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"http-mqtt-boilerplate/backend/pkg/generate"
 	"http-mqtt-boilerplate/backend/pkg/migrator"
-	"http-mqtt-boilerplate/backend/pkg/mqtt"
 	"http-mqtt-boilerplate/backend/pkg/router"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"http-mqtt-boilerplate/web"
@@ -24,12 +21,8 @@ import (
 	"syscall"
 	"time"
 
-	mqttbroker "github.com/mochi-mqtt/server/v2"
-	"github.com/mochi-mqtt/server/v2/hooks/auth"
-	"github.com/mochi-mqtt/server/v2/listeners"
-
+	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -41,7 +34,7 @@ func main() {
 	sigCtx, sigCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer sigCancel()
 
-	config, err := config.New(dialect.SQLite)
+	config, err := config.New(dialect.PostgreSQL)
 	if err != nil {
 		fatalIfErr(slog.Default(), fmt.Errorf("failed to create config: %w", err))
 	}
@@ -56,48 +49,32 @@ func main() {
 		fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
 	}
 
-	db, err := sql.Open(config.Dialect.Driver(), config.Database)
+	db, err := pgx.Connect(context.TODO(), config.Database)
 	fatalIfErr(logger, err)
 
-	defer utils.LogOnError(logger, db.Close, "failed to close database")
+	defer func() {
+		if err := db.Close(context.TODO()); err != nil {
+			logger.Error("failed to close database", utils.ErrAttr(err))
+		}
+	}()
 
-	// Create queries based on dialect
-	var queries *sqlitegen.Queries
-
-	switch config.Dialect {
-	case dialect.SQLite:
-		queries = sqlitegen.New(db)
-	case dialect.PostgreSQL:
-		fatalIfErr(logger, errors.New("PostgreSQL queries not yet implemented"))
-	default:
-		fatalIfErr(logger, fmt.Errorf("unsupported dialect: %s", config.Dialect))
-	}
+	queries := postgresgen.New(db)
+	_ = queries
 
 	// Create collector for OpenAPI generation
 	collector, err := getCollector(config, logger)
 	fatalIfErr(logger, err)
 
-	// Create MQTT builder first, before services
-
 	// Builders
 	rb, err := router.NewRouteBuilder(logger, collector)
 	fatalIfErr(logger, err)
 
-	mb, err := mqtt.NewMQTTBuilder(logger, collector, mqtt.MQTTClientOptions{
-		BrokerURL: config.MQTTBroker,
-		ClientID:  config.MQTTClientID,
-		Username:  config.MQTTUsername,
-		Password:  config.MQTTPassword,
-	})
-	fatalIfErr(logger, err)
 
 	// Now create services with the initialized MQTT client
-	services := services.NewServices(logger, db, queries, mb.Client())
+	services := services.NewServices(logger, nil, nil, nil)
 	apiHandler := api.NewAPIHandler(logger, services)
-	mqttHandler := mqttapi.NewMQTTHandler(logger, services)
 
 	registerHTTPHandlers(logger, rb, apiHandler)
-	registerMQTTHandlers(logger, mb, mqttHandler)
 
 	if config.Generate {
 		if err := collector.Generate(); err != nil {
@@ -106,26 +83,6 @@ func main() {
 
 		return
 	}
-
-	go func() {
-		if err := mb.Connect(); err != nil {
-			logger.Error("Failed to connect to MQTT broker", utils.ErrAttr(err))
-		}
-	}()
-
-	//  MQTT Broker
-	mqttAddr := fmt.Sprintf(":%d", config.MQTTBrokerPort)
-	mqttBroker, err := getMQTTServer(logger, mqttAddr)
-	fatalIfErr(logger, err)
-
-	go func() {
-		logger.Info("MQTT broker listening", slog.String("address", mqttAddr))
-
-		if err := mqttBroker.Serve(); err != nil {
-			logger.Error("MQTT broker failed", utils.ErrAttr(err))
-			sigCancel()
-		}
-	}()
 
 	// HTTP Server
 	httpAddr := fmt.Sprintf(":%d", config.Port)
@@ -158,36 +115,10 @@ func main() {
 		logger.Error("http server shutdown failed", utils.ErrAttr(err))
 	}
 
-	logger.Info("disconnecting from MQTT broker...")
-	mb.Disconnect()
-
-	// Shutdown MQTT broker
-	logger.Info("mqtt broker shutting down...")
-
-	if err := mqttBroker.Close(); err != nil {
-		logger.Error("mqtt broker shutdown failed", utils.ErrAttr(err))
-	}
 
 	logger.Info("server exited gracefully")
 }
 
-func getMQTTServer(l *slog.Logger, addr string) (*mqttbroker.Server, error) {
-	server := mqttbroker.New(&mqttbroker.Options{
-		Logger: l.With(slog.String("component", "mqtt-broker")),
-	})
-	tcp := listeners.NewTCP(listeners.Config{ID: "tcp", Address: addr})
-
-	err := server.AddListener(tcp)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := server.AddHook(new(auth.AllowHook), nil); err != nil {
-		return nil, err
-	}
-
-	return server, nil
-}
 
 // registerHTTPHandlers registers all HTTP handlers.
 func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *api.Handler) {
@@ -220,22 +151,6 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *api.Handle
 	l.Info("HTTP handlers registered successfully")
 }
 
-// registerMQTTHandlers registers all MQTT handlers.
-func registerMQTTHandlers(l *slog.Logger, mb *mqtt.MQTTBuilder, h *mqttapi.Handler) {
-	l.Info("Registering MQTT handlers...")
-	// Telemetry operations
-	h.RegisterTemperaturePublish(mb)
-	h.RegisterTemperatureSubscribe(mb)
-	h.RegisterSensorTelemetryPublish(mb)
-	h.RegisterSensorTelemetrySubscribe(mb)
-
-	// Control operations
-	h.RegisterDeviceCommandPublish(mb)
-	h.RegisterDeviceCommandSubscribe(mb)
-	h.RegisterDeviceStatusPublish(mb)
-	h.RegisterDeviceStatusSubscribe(mb)
-	l.Info("MQTT handlers registered successfully")
-}
 
 //nolint:ireturn // Returns MetadataCollector interface (OpenAPICollector or NoopCollector)
 func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector, error) {
@@ -245,14 +160,14 @@ func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector,
 
 	return generate.NewOpenAPICollector(l, generate.OpenAPICollectorOptions{
 		GoTypesDirPath:               "backend/pkg/apitypes",
-		DatabaseSchemaFileOutputPath: "api_local/schema.sql",
-		DocsFileOutputPath:           "api_local/api_docs.json",
-		OpenAPISpecOutputPath:        "api_local/openapi.yaml",
+		DatabaseSchemaFileOutputPath: "api_cloud/schema.sql",
+		DocsFileOutputPath:           "api_cloud/api_docs.json",
+		OpenAPISpecOutputPath:        "api_cloud/openapi.yaml",
 		Dialect:                      c.Dialect,
 		APIInfo: generate.APIInfo{
-			Title:       "Local API",
+			Title:       "Cloud API",
 			Version:     utils.GetVersionShort(),
-			Description: "Local API Documentation",
+			Description: "Cloud API Documentation",
 			Servers: []generate.ServerInfo{
 				{URL: "http://localhost:8080", Description: "Local server"},
 			},

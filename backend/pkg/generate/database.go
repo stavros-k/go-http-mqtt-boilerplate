@@ -55,6 +55,7 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 	case dialect.PostgreSQL:
 		// Start a PostgreSQL container for schema generation
 		ctx := context.Background()
+
 		container, err := postgrescontainer.Run(ctx,
 			"postgres:17-alpine",
 			postgrescontainer.WithDatabase("testdb"),
@@ -75,9 +76,9 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 		tempDB, err = container.ConnectionString(ctx, "sslmode=disable")
 		if err != nil {
 			cleanup()
+
 			return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to get connection string: %w", err)
 		}
-
 
 	default:
 		return "", dbstats.DatabaseStats{}, fmt.Errorf("unsupported dialect: %s", d)

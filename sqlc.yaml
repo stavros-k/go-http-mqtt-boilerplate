@@ -21,7 +21,7 @@ sql:
     strict_order_by: true
     gen:
       go:
-        package: postgres
+        package: postgresgen
         out: backend/internal/database/postgres/gen
         sql_package: pgx/v5
         omit_unused_structs: true

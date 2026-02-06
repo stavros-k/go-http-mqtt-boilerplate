@@ -123,8 +123,8 @@ components:
                 - name
             type: object
 info:
-    description: Local API Documentation
-    title: Local API
+    description: Cloud API Documentation
+    title: Cloud API
     version: vdev (unknown)
 openapi: 3.0.3
 paths:

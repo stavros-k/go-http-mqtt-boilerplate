@@ -23,7 +23,6 @@ const (
 	EnvLogLevel  EnvKey = "LOG_LEVEL"
 	EnvLogToFile EnvKey = "LOG_TO_FILE"
 
-	EnvDBDialect EnvKey = "DB_DIALECT"
 	EnvDBHost    EnvKey = "DB_HOST"
 	EnvDBPort    EnvKey = "DB_PORT"
 	EnvDBName    EnvKey = "DB_NAME"
@@ -58,7 +57,7 @@ type Config struct {
 	MQTTPassword string
 }
 
-func New() (*Config, error) {
+func New(dbDialect dialect.Dialect) (*Config, error) {
 	// Get data directory
 	dataDir := getStringEnv(EnvDataDir, "data")
 
@@ -81,10 +80,6 @@ func New() (*Config, error) {
 		logOutput = f
 	}
 
-	// Get database dialect
-	dialectStr := getStringEnv(EnvDBDialect, "sqlite")
-	dbDialect := dialect.Dialect(dialectStr)
-
 	if err := dbDialect.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid database dialect: %w", err)
 	}
@@ -100,7 +95,7 @@ func New() (*Config, error) {
 		host := getStringEnv(EnvDBHost, "localhost")
 		port := getIntEnv(EnvDBPort, 5432)
 		dbName := getStringEnv(EnvDBName, "boilerplate")
-		user := getStringEnv(EnvDBUser, "postgres")
+		user := getStringEnv(EnvDBUser, "boilerplate")
 		password := getStringEnv(EnvDBPass, "")
 		sslmode := getStringEnv(EnvDBSSLMode, "disable")
 
