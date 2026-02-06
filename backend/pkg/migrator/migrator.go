@@ -3,7 +3,6 @@ package migrator
 import (
 	"embed"
 	"fmt"
-	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"log/slog"
 )
 
@@ -13,20 +12,14 @@ type Migrator interface {
 	DumpSchema(outputPath string) error
 }
 
-// New creates a migrator for the specified dialect.
+// New creates a PostgreSQL migrator.
+// Accepts one embed.FS and multiple migration directory paths.
 //
 //nolint:ireturn // Returns Migrator interface
-func New(l *slog.Logger, d dialect.Dialect, fs embed.FS, connString string) (Migrator, error) {
-	if err := d.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid dialect: %w", err)
+func New(l *slog.Logger, connString string, fs embed.FS, migrationDirs ...string) (Migrator, error) {
+	if len(migrationDirs) == 0 {
+		return nil, fmt.Errorf("at least one migration directory is required")
 	}
 
-	switch d {
-	case dialect.SQLite:
-		return newSQLiteMigrator(l, fs, connString)
-	case dialect.PostgreSQL:
-		return newPostgresMigrator(l, fs, connString)
-	default:
-		return nil, fmt.Errorf("unsupported dialect: %s", d)
-	}
+	return newPostgresMigrator(l, connString, fs, migrationDirs...)
 }

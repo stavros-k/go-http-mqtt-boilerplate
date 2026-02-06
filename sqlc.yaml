@@ -1,28 +1,38 @@
 version: "2"
 sql:
-  - engine: sqlite
-    queries: backend/internal/database/localdb/queries
-    schema: backend/internal/database/localdb/migrations
+  # Local Database
+  - engine: postgresql
+    queries:
+      - backend/internal/shared/queries
+      - backend/internal/local/queries
+    schema:
+      - backend/internal/migrations/shared/migrations
+      - backend/internal/migrations/local/migrations
     strict_function_checks: true
     strict_order_by: true
     gen:
       go:
-        package: localdbgen
-        out: backend/internal/database/localdb/gen
-        sql_package: database/sql
+        package: localdb
+        out: backend/internal/local/gen
+        sql_package: pgx/v5
         omit_unused_structs: true
         emit_empty_slices: true
         emit_sql_as_comment: true
         query_parameter_limit: 0
+  # Cloud Database
   - engine: postgresql
-    queries: backend/internal/database/clouddb/queries
-    schema: backend/internal/database/clouddb/migrations
+    queries:
+      - backend/internal/shared/queries
+      - backend/internal/cloud/queries
+    schema:
+      - backend/internal/migrations/shared/migrations
+      - backend/internal/migrations/cloud/migrations
     strict_function_checks: true
     strict_order_by: true
     gen:
       go:
-        package: clouddbgen
-        out: backend/internal/database/clouddb/gen
+        package: clouddb
+        out: backend/internal/cloud/gen
         sql_package: pgx/v5
         omit_unused_structs: true
         emit_empty_slices: true

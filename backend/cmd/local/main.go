@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,22 +15,22 @@ import (
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/mattn/go-sqlite3"
-
-	"http-mqtt-boilerplate/backend/internal/apicommon"
 	"http-mqtt-boilerplate/backend/internal/config"
-	localdb "http-mqtt-boilerplate/backend/internal/database/localdb/gen"
-	"http-mqtt-boilerplate/backend/internal/localapi"
-	mqttapi "http-mqtt-boilerplate/backend/internal/mqtt"
-	localservices "http-mqtt-boilerplate/backend/internal/services/local"
-	"http-mqtt-boilerplate/backend/pkg/dialect"
+	localapi "http-mqtt-boilerplate/backend/internal/local/api"
+	localdb "http-mqtt-boilerplate/backend/internal/local/gen"
+	mqttapi "http-mqtt-boilerplate/backend/internal/local/mqtt"
+	localservices "http-mqtt-boilerplate/backend/internal/local/services"
+	"http-mqtt-boilerplate/backend/internal/migrations"
+	sharedapi "http-mqtt-boilerplate/backend/internal/shared/api"
 	"http-mqtt-boilerplate/backend/pkg/generate"
 	"http-mqtt-boilerplate/backend/pkg/migrator"
 	"http-mqtt-boilerplate/backend/pkg/mqtt"
 	"http-mqtt-boilerplate/backend/pkg/router"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"http-mqtt-boilerplate/web"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
@@ -43,7 +42,7 @@ func main() {
 	sigCtx, sigCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer sigCancel()
 
-	config, err := config.New(dialect.SQLite)
+	config, err := config.New()
 	if err != nil {
 		fatalIfErr(slog.Default(), fmt.Errorf("failed to create config: %w", err))
 	}
@@ -59,7 +58,7 @@ func main() {
 
 	// Conditionally initialize database and queries
 	var (
-		db      *sql.DB          = nil
+		pool    *pgxpool.Pool    = nil
 		queries *localdb.Queries = nil
 	)
 
@@ -69,20 +68,12 @@ func main() {
 			fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
 		}
 
-		db, err = sql.Open(config.Dialect.Driver(), config.Database)
+		pool, err = pgxpool.New(context.TODO(), config.Database)
 		fatalIfErr(logger, err)
 
-		defer utils.LogOnError(logger, db.Close, "failed to close database")
+		defer pool.Close()
 
-		// Create queries based on dialect
-		switch config.Dialect {
-		case dialect.SQLite:
-			queries = localdb.New(db)
-		case dialect.PostgreSQL:
-			fatalIfErr(logger, errors.New("PostgreSQL queries not yet implemented"))
-		default:
-			fatalIfErr(logger, fmt.Errorf("unsupported dialect: %s", config.Dialect))
-		}
+		queries = localdb.New(pool)
 	}
 
 	// Builders
@@ -98,7 +89,7 @@ func main() {
 	fatalIfErr(logger, err)
 
 	// Create services
-	services := localservices.NewServices(logger, db, queries, mb.Client())
+	services := localservices.NewServices(logger, pool, queries, mb.Client())
 	apiHandler := localapi.NewHandler(logger, services)
 	mqttHandler := mqttapi.NewMQTTHandler(logger, services)
 
@@ -201,7 +192,7 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *localapi.H
 	l.Info("Registering HTTP handlers...")
 
 	// Create middleware handler
-	mw := apicommon.NewMiddlewareHandler(l)
+	mw := sharedapi.NewMiddlewareHandler(l)
 
 	rb.Route("/api", func(rb *router.RouteBuilder) {
 		// Add request ID
@@ -262,7 +253,7 @@ func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector,
 		DatabaseSchemaFileOutputPath: "api_local/schema.sql",
 		DocsFileOutputPath:           "api_local/api_docs.json",
 		OpenAPISpecOutputPath:        "api_local/openapi.yaml",
-		Dialect:                      c.Dialect,
+		Deployment:                   "local",
 		APIInfo: generate.APIInfo{
 			Title:       "Local API",
 			Version:     utils.GetVersionShort(),
@@ -298,10 +289,10 @@ func fatalIfErr(l *slog.Logger, err error) {
 }
 
 func runMigrations(l *slog.Logger, c *config.Config) error {
-	l.Info("Running database migrations", slog.String("dialect", c.Dialect.String()))
+	l.Info("Running database migrations")
 
-	// Create migrator
-	mig, err := migrator.New(l, c.Dialect, c.Dialect.MigrationFS(), c.Database)
+	// Create migrator with shared + local migration directories
+	mig, err := migrator.New(l, c.Database, migrations.GetFS(), "shared/migrations", "local/migrations")
 	if err != nil {
 		return fmt.Errorf("failed to create migrator: %w", err)
 	}
