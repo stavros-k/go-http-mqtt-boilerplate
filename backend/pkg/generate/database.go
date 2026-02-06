@@ -2,7 +2,7 @@ package generate
 
 import (
 	"bytes"
-	"errors"
+	"context"
 	"fmt"
 	"http-mqtt-boilerplate/backend/internal/database/postgres"
 	"http-mqtt-boilerplate/backend/internal/database/sqlite"
@@ -12,6 +12,8 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"os"
+
+	postgrescontainer "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
 // GenerateDatabaseSchema runs migrations on a temporary database and returns the resulting schema and stats.
@@ -51,14 +53,31 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 		}
 
 	case dialect.PostgreSQL:
-		// FIXME: use testcontainers here.
-		// For PostgreSQL, use a test connection string from environment
-		tempDB = os.Getenv("POSTGRES_TEST_URL")
-		if tempDB == "" {
-			return "", dbstats.DatabaseStats{}, errors.New("POSTGRES_TEST_URL environment variable required for PostgreSQL schema generation")
+		// Start a PostgreSQL container for schema generation
+		ctx := context.Background()
+		container, err := postgrescontainer.Run(ctx,
+			"postgres:17-alpine",
+			postgrescontainer.WithDatabase("testdb"),
+			postgrescontainer.WithUsername("postgres"),
+			postgrescontainer.WithPassword("postgres"),
+			postgrescontainer.BasicWaitStrategies(),
+		)
+		if err != nil {
+			return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to start PostgreSQL container: %w", err)
 		}
 
-		cleanup = func() {} // No cleanup needed for PostgreSQL test database
+		cleanup = func() {
+			if err := container.Terminate(ctx); err != nil {
+				g.l.Error("failed to terminate PostgreSQL container", utils.ErrAttr(err))
+			}
+		}
+		// Get connection string from container
+		tempDB, err = container.ConnectionString(ctx, "sslmode=disable")
+		if err != nil {
+			cleanup()
+			return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to get connection string: %w", err)
+		}
+
 
 	default:
 		return "", dbstats.DatabaseStats{}, fmt.Errorf("unsupported dialect: %s", d)
