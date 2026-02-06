@@ -9,6 +9,7 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/dbstats"
 	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"http-mqtt-boilerplate/backend/pkg/migrator"
+	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"os"
 )
@@ -35,6 +36,9 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 
 		// Close immediately - we only need the file path, not the handle
 		if err := tempDBFile.Close(); err != nil {
+			if removeErr := os.Remove(tempDBFile.Name()); removeErr != nil {
+				g.l.Error("failed to remove temporary database file", slog.String("file", tempDBFile.Name()), utils.ErrAttr(removeErr))
+			}
 			return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to close temporary database file: %w", err)
 		}
 
