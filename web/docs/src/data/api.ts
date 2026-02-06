@@ -154,42 +154,9 @@ export type APIInfo = {
     servers: ServerInfo[];
 };
 
-// Database stats types
-export type Column = {
-    name: string;
-    type: string;
-    notNull: boolean;
-    default?: string;
-    primaryKey: boolean;
-};
-
-export type ForeignKey = {
-    from: string;
-    table: string;
-    to: string;
-};
-
-export type Index = {
-    name: string;
-    unique: boolean;
-    columns: string[];
-};
-
-export type Table = {
-    name: string;
-    columns: Column[];
-    foreignKeys: ForeignKey[];
-    indexes: Index[];
-};
-
-export type DatabaseStats = {
-    tables: Table[];
-};
-
 export type Database = {
     dialect: string;
     schema: string;
-    stats: DatabaseStats;
 };
 
 // APIDocumentation is the complete API documentation structure

@@ -1,3 +1,5 @@
+\restrict dbmate
+
 -- Dumped from database version 17.7
 -- Dumped by pg_dump version 18.1
 
@@ -149,6 +151,7 @@ ALTER TABLE ONLY public."user"
 -- PostgreSQL database dump complete
 --
 
+\unrestrict dbmate
 
 
 --

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TbApi, TbCode, TbDatabase, TbFileDescription } from "react-icons/tb";
+import { TbApi, TbCode, TbFileDescription } from "react-icons/tb";
 import { PubBadge } from "@/components/pub-badge";
 import { SubBadge } from "@/components/sub-badge";
 import { VerbBadge } from "@/components/verb-badge";
@@ -26,23 +26,6 @@ const mqttTypeCount = Object.values(docs.types).filter((type) => {
     if (!("usedBy" in type) || !type.usedBy) return false;
     return type.usedBy.some((usage) => ["mqtt_publication", "mqtt_subscription"].includes(usage.role));
 }).length;
-
-const tableCount = docs.database.stats.tables.length || 0;
-
-// Calculate total number of columns across all tables
-const columnCount = docs.database.stats.tables.reduce((total, table) => {
-    return total + (table.columns?.length || 0);
-}, 0);
-
-// Calculate total number of foreign keys across all tables
-const foreignKeyCount = docs.database.stats.tables.reduce((total, table) => {
-    return total + (table.foreignKeys?.length || 0);
-}, 0);
-
-// Calculate total number of indexes across all tables
-const indexCount = docs.database.stats.tables.reduce((total, table) => {
-    return total + (table.indexes?.length || 0);
-}, 0);
 
 // Get unique paths for route count
 const uniquePaths = new Set(operations.map((op) => op.path));
@@ -207,64 +190,6 @@ export default function Home() {
                             </div>
                             <div className='mb-2 font-bold text-4xl text-accent-purple'>{mqttTypeCount}</div>
                             <p className='text-text-secondary text-xs'>MQTT types</p>
-                        </div>
-                    </Link>
-                </div>
-            </div>
-
-            {/* Other Resources Section */}
-            <div className='w-full bg-bg-secondary/20 px-6 py-12 lg:px-8'>
-                <h2 className='mb-10 text-center font-bold text-3xl text-text-primary'>Resources</h2>
-                <div className='mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2'>
-                    {/* Types Card */}
-                    <Link
-                        href='/api/types'
-                        className='block'>
-                        <div className='h-full cursor-pointer rounded-2xl border-2 border-border-primary bg-bg-secondary p-6 shadow-lg transition-all duration-300 hover:scale-105 hover:border-success-border hover:shadow-2xl'>
-                            <div className='mb-4 flex items-center gap-3'>
-                                <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-success-bg shadow-md'>
-                                    <TbCode className='h-8 w-8 text-success-text' />
-                                </div>
-                                <div className='font-bold text-lg text-text-primary'>All Types</div>
-                            </div>
-                            <div className='mb-2 font-bold text-4xl text-success-text'>
-                                {Object.keys(docs.types).length}
-                            </div>
-                            <p className='text-text-secondary text-xs'>Type definitions</p>
-                        </div>
-                    </Link>
-
-                    {/* Database Schema Card */}
-                    <Link
-                        href='/api/database/schema'
-                        className='block'>
-                        <div className='h-full cursor-pointer rounded-2xl border-2 border-border-primary bg-bg-secondary p-6 shadow-lg transition-all duration-300 hover:scale-105 hover:border-info-border hover:shadow-2xl'>
-                            <div className='mb-4 flex items-center gap-3'>
-                                <div className='flex h-12 w-12 items-center justify-center rounded-xl bg-info-bg shadow-md'>
-                                    <TbDatabase className='h-8 w-8 text-info-text' />
-                                </div>
-                                <div className='font-bold text-lg text-text-primary'>Database</div>
-                            </div>
-                            <div className='flex items-center justify-between'>
-                                <div>
-                                    <div className='mb-1 font-bold text-2xl text-info-text'>{tableCount}</div>
-                                    <p className='text-text-secondary text-xs'>Table{tableCount !== 1 ? "s" : ""}</p>
-                                </div>
-                                <div>
-                                    <div className='mb-1 font-bold text-2xl text-info-text'>{columnCount}</div>
-                                    <p className='text-text-secondary text-xs'>Column{columnCount !== 1 ? "s" : ""}</p>
-                                </div>
-                                <div>
-                                    <div className='mb-1 font-bold text-2xl text-info-text'>{foreignKeyCount}</div>
-                                    <p className='text-text-secondary text-xs'>
-                                        Foreign Key{foreignKeyCount !== 1 ? "s" : ""}
-                                    </p>
-                                </div>
-                                <div>
-                                    <div className='mb-1 font-bold text-2xl text-info-text'>{indexCount}</div>
-                                    <p className='text-text-secondary text-xs'>Index{indexCount !== 1 ? "es" : ""}</p>
-                                </div>
-                            </div>
                         </div>
                     </Link>
                 </div>

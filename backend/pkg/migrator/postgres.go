@@ -1,17 +1,14 @@
 package migrator
 
 import (
-	"bytes"
 	"embed"
 	"errors"
 	"fmt"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"net/url"
-	"os"
 
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
-	"github.com/amacneil/dbmate/v2/pkg/dbutil"
 	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -76,23 +73,6 @@ func (m *postgresMigrator) DumpSchema(filePath string) error {
 
 	if err := m.db.DumpSchema(); err != nil {
 		return fmt.Errorf("failed to dump schema: %w", err)
-	}
-
-	// read the schema file
-	schemaBytes, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to read schema file: %w", err)
-	}
-
-	schemaBytes, err = dbutil.StripPsqlMetaCommands(schemaBytes)
-	if err != nil {
-		return fmt.Errorf("failed to strip psql meta commands: %w", err)
-	}
-
-	schema := string(bytes.TrimSpace(schemaBytes)) + "\n"
-
-	if err := os.WriteFile(filePath, []byte(schema), 0o600); err != nil {
-		return fmt.Errorf("failed to write schema file: %w", err)
 	}
 
 	return nil

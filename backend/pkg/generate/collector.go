@@ -184,14 +184,13 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 		primitiveTypeMapping: getPrimitiveTypeMappings(),
 	}
 
-	dbSchema, dbStats, err := docCollector.GenerateDatabaseSchema(opts.Dialect, opts.DatabaseSchemaFileOutputPath)
+	dbSchema, err := docCollector.GenerateDatabaseSchema(opts.Dialect, opts.DatabaseSchemaFileOutputPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate database schema: %w", err)
 	}
 
 	docCollector.database.Dialect = opts.Dialect.String()
 	docCollector.database.Schema = dbSchema
-	docCollector.database.Stats = dbStats
 
 	// Parse all directories at once using parseGoTypesDirs
 	goParser, err := docCollector.parseGoTypesDirs(goTypesDirPaths)
@@ -244,6 +243,7 @@ func newTSParser(l *slog.Logger, goTypesDirPaths []string) (*TSParser, error) {
 			if !os.IsNotExist(err) {
 				return nil, fmt.Errorf("failed to stat go types dir path %s: %w", goTypesDirPath, err)
 			}
+
 			return nil, fmt.Errorf("failed to validate TypeScript parser: go types dir path %s does not exist", goTypesDirPath)
 		}
 

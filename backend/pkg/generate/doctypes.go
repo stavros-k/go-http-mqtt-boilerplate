@@ -171,7 +171,6 @@ type ServerInfo struct {
 }
 
 type Database struct {
-	Dialect string        `json:"dialect"`
-	Schema  string        `json:"schema"`
-	Stats   DatabaseStats `json:"stats"`
+	Dialect string `json:"dialect"`
+	Schema  string `json:"schema"`
 }
