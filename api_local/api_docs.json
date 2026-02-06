@@ -1584,7 +1584,9 @@
                             "notNull": true,
                             "primaryKey": true
                         }
-                    ]
+                    ],
+                    "foreignKeys": [],
+                    "indexes": []
                 },
                 {
                     "name": "some-table",
@@ -1615,7 +1617,9 @@
                             "default": "CURRENT_TIMESTAMP",
                             "primaryKey": false
                         }
-                    ]
+                    ],
+                    "foreignKeys": [],
+                    "indexes": []
                 },
                 {
                     "name": "user",
