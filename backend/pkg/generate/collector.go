@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"os"
@@ -125,10 +126,11 @@ func normalizeLocalPackagePath(path string) string {
 }
 
 type OpenAPICollectorOptions struct {
-	GoTypesDirPath               string // Path to Go types file for parsing
-	DocsFileOutputPath           string // Path for generated API docs JSON file
-	DatabaseSchemaFileOutputPath string // Path for generated DB schema SQL file
-	OpenAPISpecOutputPath        string // Path for generated OpenAPI YAML file
+	GoTypesDirPath               string          // Path to Go types file for parsing
+	DocsFileOutputPath           string          // Path for generated API docs JSON file
+	DatabaseSchemaFileOutputPath string          // Path for generated DB schema SQL file
+	OpenAPISpecOutputPath        string          // Path for generated OpenAPI YAML file
+	Dialect                      dialect.Dialect // Database dialect
 	APIInfo                      APIInfo
 }
 
@@ -179,18 +181,13 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 		primitiveTypeMapping: getPrimitiveTypeMappings(),
 	}
 
-	dbSchema, err := docCollector.GenerateDatabaseSchema(opts.DatabaseSchemaFileOutputPath)
+	dbSchema, dbStats, err := docCollector.GenerateDatabaseSchema(opts.Dialect, opts.DatabaseSchemaFileOutputPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get database schema: %w", err)
+		return nil, fmt.Errorf("failed to generate database schema: %w", err)
 	}
 
+	docCollector.database.Dialect = opts.Dialect.String()
 	docCollector.database.Schema = dbSchema
-
-	dbStats, err := docCollector.GetDatabaseStats(dbSchema)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database stats: %w", err)
-	}
-
 	docCollector.database.Stats = dbStats
 
 	goParser, err := docCollector.parseGoTypesDir(goTypesDirPath)

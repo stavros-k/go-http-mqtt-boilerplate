@@ -10,7 +10,9 @@ import (
 	sqlitegen "http-mqtt-boilerplate/backend/internal/database/sqlite/gen"
 	mqttapi "http-mqtt-boilerplate/backend/internal/mqtt"
 	"http-mqtt-boilerplate/backend/internal/services"
+	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"http-mqtt-boilerplate/backend/pkg/generate"
+	"http-mqtt-boilerplate/backend/pkg/migrator"
 	"http-mqtt-boilerplate/backend/pkg/mqtt"
 	"http-mqtt-boilerplate/backend/pkg/router"
 	"http-mqtt-boilerplate/backend/pkg/utils"
@@ -26,6 +28,7 @@ import (
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
 
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -48,12 +51,28 @@ func main() {
 	// Initialize logger
 	logger := getLogger(config)
 
-	db, err := sql.Open("sqlite3", config.Database)
+	// Run migrations before opening database connection
+	if err := runMigrations(logger, config); err != nil {
+		fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
+	}
+
+	// TODO: Set a common set of PRAGMA settings for SQLite connections
+	db, err := sql.Open(config.Dialect.Driver(), config.Database)
 	fatalIfErr(logger, err)
 
 	defer utils.LogOnError(logger, db.Close, "failed to close database")
 
-	queries := sqlitegen.New(db)
+	// Create queries based on dialect
+	var queries *sqlitegen.Queries
+
+	switch config.Dialect {
+	case dialect.SQLite:
+		queries = sqlitegen.New(db)
+	case dialect.PostgreSQL:
+		fatalIfErr(logger, errors.New("PostgreSQL queries not yet implemented"))
+	default:
+		fatalIfErr(logger, fmt.Errorf("unsupported dialect: %s", config.Dialect))
+	}
 
 	// Create collector for OpenAPI generation
 	collector, err := getCollector(config, logger)
@@ -227,9 +246,10 @@ func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector,
 
 	return generate.NewOpenAPICollector(l, generate.OpenAPICollectorOptions{
 		GoTypesDirPath:               "backend/pkg/apitypes",
-		DatabaseSchemaFileOutputPath: "schema.sql",
-		DocsFileOutputPath:           "api_docs.json",
-		OpenAPISpecOutputPath:        "openapi.yaml",
+		DatabaseSchemaFileOutputPath: "api_local/schema.sql",
+		DocsFileOutputPath:           "api_local/api_docs.json",
+		OpenAPISpecOutputPath:        "api_local/openapi.yaml",
+		Dialect:                      c.Dialect,
 		APIInfo: generate.APIInfo{
 			Title:       "Local API",
 			Version:     utils.GetVersionShort(),
@@ -262,4 +282,23 @@ func fatalIfErr(l *slog.Logger, err error) {
 
 	l.Error("error", utils.ErrAttr(err))
 	os.Exit(1)
+}
+
+func runMigrations(l *slog.Logger, c *config.Config) error {
+	l.Info("Running database migrations", slog.String("dialect", c.Dialect.String()))
+
+	// Create migrator
+	mig, err := migrator.New(l, c.Dialect, c.Dialect.MigrationFS(), c.Database)
+	if err != nil {
+		return fmt.Errorf("failed to create migrator: %w", err)
+	}
+
+	// Run migrations
+	if err := mig.Migrate(); err != nil {
+		return fmt.Errorf("failed to migrate: %w", err)
+	}
+
+	l.Info("Database migrations completed successfully")
+
+	return nil
 }

@@ -68,7 +68,7 @@ export default function DatabaseSchema() {
                                                             {column.type}
                                                         </td>
                                                         <td className='border-border-primary border-b px-4 py-3 text-sm'>
-                                                            {column.not_null ? (
+                                                            {column.notNull ? (
                                                                 <span className='rounded-full bg-red-500/20 px-2 py-1 font-medium text-red-400 text-xs'>
                                                                     NO
                                                                 </span>
@@ -79,7 +79,7 @@ export default function DatabaseSchema() {
                                                             )}
                                                         </td>
                                                         <td className='border-border-primary border-b px-4 py-3 text-sm'>
-                                                            {column.primary_key ? (
+                                                            {column.primaryKey ? (
                                                                 <span className='rounded-full bg-accent-blue/20 px-2 py-1 font-medium text-accent-blue text-xs'>
                                                                     YES
                                                                 </span>
@@ -100,7 +100,7 @@ export default function DatabaseSchema() {
                                 </div>
 
                                 {/* Foreign Keys Section */}
-                                {table.foreign_keys && (
+                                {table.foreignKeys && (
                                     <div>
                                         <h3 className='mb-3 font-semibold text-lg text-text-secondary'>Foreign Keys</h3>
                                         <div className='overflow-x-auto'>
@@ -116,7 +116,7 @@ export default function DatabaseSchema() {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {table.foreign_keys.map((fk, idx) => (
+                                                    {table.foreignKeys.map((fk, idx) => (
                                                         <tr
                                                             key={`${fk.table}.${fk.to}-${idx}`}
                                                             className='hover:bg-bg-secondary/50'>

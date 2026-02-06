@@ -1643,6 +1643,7 @@
     }
   },
   "database": {
+    "dialect": "sqlite",
     "schema": "CREATE TABLE IF NOT EXISTS \"schema_migrations\" (version varchar(128) primary key);\nCREATE TABLE IF NOT EXISTS \"some-table\" (\n  \"id\" INTEGER PRIMARY KEY,\n  \"name\" TEXT NOT NULL,\n  \"created_at\" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  \"updated_at\" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP\n);\nCREATE TABLE IF NOT EXISTS \"user\" (\n  \"id\" INTEGER PRIMARY KEY,\n  \"name\" TEXT NOT NULL,\n  \"email\" TEXT NOT NULL,\n  \"password\" TEXT NOT NULL,\n  \"created_at\" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  \"updated_at\" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, \"last_login\" TIMESTAMP,\n  FOREIGN KEY (id) REFERENCES \"some-table\" (id) ON DELETE CASCADE\n);\nCREATE INDEX \"user_name_idx\" ON \"user\" (\"name\");\nCREATE INDEX \"user_email_idx\" ON \"user\" (\"email\");\n-- Dbmate schema migrations\nINSERT INTO \"schema_migrations\" (version) VALUES\n  ('20251009092116'),\n  ('20251009104248'),\n  ('20260206084831');",
     "stats": {
       "tables": [
@@ -1652,8 +1653,8 @@
             {
               "name": "version",
               "type": "varchar(128)",
-              "not_null": false,
-              "primary_key": true
+              "notNull": true,
+              "primaryKey": true
             }
           ]
         },
@@ -1663,28 +1664,28 @@
             {
               "name": "id",
               "type": "INTEGER",
-              "not_null": false,
-              "primary_key": true
+              "notNull": true,
+              "primaryKey": true
             },
             {
               "name": "name",
               "type": "TEXT",
-              "not_null": true,
-              "primary_key": false
+              "notNull": true,
+              "primaryKey": false
             },
             {
               "name": "created_at",
               "type": "TIMESTAMP",
-              "not_null": true,
+              "notNull": true,
               "default": "CURRENT_TIMESTAMP",
-              "primary_key": false
+              "primaryKey": false
             },
             {
               "name": "updated_at",
               "type": "TIMESTAMP",
-              "not_null": true,
+              "notNull": true,
               "default": "CURRENT_TIMESTAMP",
-              "primary_key": false
+              "primaryKey": false
             }
           ]
         },
@@ -1694,49 +1695,49 @@
             {
               "name": "id",
               "type": "INTEGER",
-              "not_null": false,
-              "primary_key": true
+              "notNull": true,
+              "primaryKey": true
             },
             {
               "name": "name",
               "type": "TEXT",
-              "not_null": true,
-              "primary_key": false
+              "notNull": true,
+              "primaryKey": false
             },
             {
               "name": "email",
               "type": "TEXT",
-              "not_null": true,
-              "primary_key": false
+              "notNull": true,
+              "primaryKey": false
             },
             {
               "name": "password",
               "type": "TEXT",
-              "not_null": true,
-              "primary_key": false
+              "notNull": true,
+              "primaryKey": false
             },
             {
               "name": "created_at",
               "type": "TIMESTAMP",
-              "not_null": true,
+              "notNull": true,
               "default": "CURRENT_TIMESTAMP",
-              "primary_key": false
+              "primaryKey": false
             },
             {
               "name": "updated_at",
               "type": "TIMESTAMP",
-              "not_null": true,
+              "notNull": true,
               "default": "CURRENT_TIMESTAMP",
-              "primary_key": false
+              "primaryKey": false
             },
             {
               "name": "last_login",
               "type": "TIMESTAMP",
-              "not_null": false,
-              "primary_key": false
+              "notNull": false,
+              "primaryKey": false
             }
           ],
-          "foreign_keys": [
+          "foreignKeys": [
             {
               "from": "id",
               "table": "some-table",

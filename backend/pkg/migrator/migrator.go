@@ -2,76 +2,33 @@ package migrator
 
 import (
 	"embed"
-	"errors"
 	"fmt"
-	"http-mqtt-boilerplate/backend/pkg/utils"
+	"http-mqtt-boilerplate/backend/pkg/dbstats"
+	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"log/slog"
-	"net/url"
-
-	"github.com/amacneil/dbmate/v2/pkg/dbmate"
-	_ "github.com/amacneil/dbmate/v2/pkg/driver/sqlite"
 )
 
-type Migrator struct {
-	db      *dbmate.DB
-	fs      embed.FS // This must contain a migrations directory
-	sqlPath string
-	l       *slog.Logger
+// Migrator defines the interface for database migrations and schema operations.
+type Migrator interface {
+	Migrate() error
+	DumpSchema(outputPath string) error
+	GetDatabaseStats() (dbstats.DatabaseStats, error)
 }
 
-// New creates a new Migrator instance.
-// TODO: Set a common set of PRAGMA settings for SQLite connections
-// TODO: Test if we can edit db from a db browser while working.
-func New(l *slog.Logger, fs embed.FS, sqlPath string) (*Migrator, error) {
-	if sqlPath == "" {
-		return nil, errors.New("sqlPath is required")
+// New creates a migrator for the specified dialect.
+//
+//nolint:ireturn // Returns Migrator interface
+func New(l *slog.Logger, d dialect.Dialect, fs embed.FS, connString string) (Migrator, error) {
+	if err := d.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid dialect: %w", err)
 	}
 
-	_, err := fs.ReadDir("migrations")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read migrations directory: %w", err)
+	switch d {
+	case dialect.SQLite:
+		return newSQLiteMigrator(l, fs, connString)
+	case dialect.PostgreSQL:
+		return newPostgresMigrator(l, fs, connString)
+	default:
+		return nil, fmt.Errorf("unsupported dialect: %s", d)
 	}
-
-	u, err := url.Parse("sqlite:" + sqlPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse database url: %w", err)
-	}
-
-	db := dbmate.New(u)
-	db.Strict = true
-	db.FS = fs
-	db.MigrationsDir = []string{"migrations"}
-	db.AutoDumpSchema = false
-
-	l = l.With(slog.String("component", "db-migrator"))
-	db.Log = utils.NewSlogWriter(l)
-
-	return &Migrator{
-		l:       l,
-		db:      db,
-		fs:      fs,
-		sqlPath: sqlPath,
-	}, nil
-}
-
-func (m *Migrator) Migrate() error {
-	m.l.Info("Migrating database")
-
-	if err := m.db.Migrate(); err != nil {
-		return fmt.Errorf("failed to migrate database: %w", err)
-	}
-
-	return nil
-}
-
-func (m *Migrator) DumpSchema(filePath string) error {
-	m.db.SchemaFile = filePath
-
-	m.l.Info("Dumping schema", slog.String("file", filePath))
-
-	if err := m.db.DumpSchema(); err != nil {
-		return fmt.Errorf("failed to dump schema: %w", err)
-	}
-
-	return nil
 }

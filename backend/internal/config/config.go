@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"io"
 	"log/slog"
 	"os"
@@ -20,6 +21,14 @@ const (
 	EnvLogLevel  EnvKey = "LOG_LEVEL"
 	EnvLogToFile EnvKey = "LOG_TO_FILE"
 
+	EnvDBDialect EnvKey = "DB_DIALECT"
+	EnvDBHost    EnvKey = "DB_HOST"
+	EnvDBPort    EnvKey = "DB_PORT"
+	EnvDBName    EnvKey = "DB_NAME"
+	EnvDBUser    EnvKey = "DB_USER"
+	EnvDBPass    EnvKey = "DB_PASSWORD"
+	EnvDBSSLMode EnvKey = "DB_SSLMODE"
+
 	EnvMQTTBrokerPort EnvKey = "MQTT_SERVER_PORT"
 
 	EnvMQTTBroker   EnvKey = "MQTT_BROKER"
@@ -33,6 +42,7 @@ type Config struct {
 	Generate  bool
 	DataDir   string
 	Database  string
+	Dialect   dialect.Dialect
 	LogLevel  slog.Leveler
 	LogOutput io.Writer
 
@@ -56,7 +66,6 @@ func New() (*Config, error) {
 	}
 
 	// Derive paths from data directory
-	dbPath := filepath.Join(dataDir, "database.sqlite")
 	logPath := filepath.Join(dataDir, "app.log")
 
 	var logOutput io.Writer = os.Stdout
@@ -70,11 +79,42 @@ func New() (*Config, error) {
 		logOutput = f
 	}
 
+	// Get database dialect
+	dialectStr := getStringEnv(EnvDBDialect, "sqlite")
+	dbDialect := dialect.Dialect(dialectStr)
+
+	if err := dbDialect.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid database dialect: %w", err)
+	}
+
+	// Build database connection string based on dialect
+	var dbConnString string
+
+	switch dbDialect {
+	case dialect.SQLite:
+		dbConnString = filepath.Join(dataDir, "database.sqlite")
+	case dialect.PostgreSQL:
+		host := getStringEnv(EnvDBHost, "localhost")
+		port := getIntEnv(EnvDBPort, 5432)
+		dbName := getStringEnv(EnvDBName, "boilerplate")
+		user := getStringEnv(EnvDBUser, "postgres")
+		password := getStringEnv(EnvDBPass, "")
+		sslmode := getStringEnv(EnvDBSSLMode, "disable")
+
+		dbConnString = fmt.Sprintf(
+			"host=%s port=%d dbname=%s user=%s password=%s sslmode=%s",
+			host, port, dbName, user, password, sslmode,
+		)
+	default:
+		return nil, fmt.Errorf("unsupported dialect: %s", dbDialect)
+	}
+
 	return &Config{
 		Port:           getIntEnv(EnvPort, 8080),
 		Generate:       getBoolEnv(EnvGenerate, false),
 		DataDir:        dataDir,
-		Database:       dbPath,
+		Database:       dbConnString,
+		Dialect:        dbDialect,
 		LogLevel:       getLogLevelEnv(EnvLogLevel, slog.LevelInfo),
 		LogOutput:      logOutput,
 		MQTTBrokerPort: getIntEnv(EnvMQTTBrokerPort, 1883),

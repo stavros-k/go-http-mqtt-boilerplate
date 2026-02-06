@@ -27,7 +27,7 @@ const mqttTypeCount = Object.values(docs.types).filter((type) => {
     return type.usedBy.some((usage) => ["mqtt_publication", "mqtt_subscription"].includes(usage.role));
 }).length;
 
-const tableCount = docs.database.tableCount || 0;
+const tableCount = docs.database.stats.tables.length || 0;
 
 // Get unique paths for route count
 const uniquePaths = new Set(operations.map((op) => op.path));

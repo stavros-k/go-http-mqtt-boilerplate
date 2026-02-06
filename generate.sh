@@ -17,6 +17,7 @@ echo "Starting server for code generation..."
 go build -o ${OUTPUT_BINARY} ./backend/cmd/server
 LOG_LEVEL=debug GENERATE=true ${OUTPUT_BINARY}
 
+cp api_local/api_docs.json .
 npm run fmt
 
 echo "Running docs build..."
