@@ -3,8 +3,8 @@ package dialect
 import (
 	"embed"
 	"fmt"
-	"http-mqtt-boilerplate/backend/internal/database/postgres"
-	"http-mqtt-boilerplate/backend/internal/database/sqlite"
+	postgres "http-mqtt-boilerplate/backend/internal/database/clouddb"
+	sqlite "http-mqtt-boilerplate/backend/internal/database/localdb"
 )
 
 type Dialect string

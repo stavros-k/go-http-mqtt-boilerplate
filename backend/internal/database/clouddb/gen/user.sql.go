@@ -3,7 +3,7 @@
 //   sqlc v1.30.0
 // source: user.sql
 
-package postgresgen
+package clouddbgen
 
 import (
 	"context"

@@ -94,8 +94,8 @@ func New(dbDialect dialect.Dialect) (*Config, error) {
 	case dialect.PostgreSQL:
 		host := getStringEnv(EnvDBHost, "localhost")
 		port := getIntEnv(EnvDBPort, 5432)
-		dbName := getStringEnv(EnvDBName, "boilerplate")
-		user := getStringEnv(EnvDBUser, "boilerplate")
+		dbName := getStringEnv(EnvDBName, "cloud")
+		user := getStringEnv(EnvDBUser, "cloud")
 		password := getStringEnv(EnvDBPass, "")
 		sslmode := getStringEnv(EnvDBSSLMode, "disable")
 

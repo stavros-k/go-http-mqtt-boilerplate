@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"log/slog"
 
-	sqlitegen "http-mqtt-boilerplate/backend/internal/database/sqlite/gen"
+	localdb "http-mqtt-boilerplate/backend/internal/database/localdb/gen"
 	"http-mqtt-boilerplate/backend/pkg/mqtt"
 )
 
@@ -13,11 +13,11 @@ type Services struct {
 	l          *slog.Logger
 	mqttClient *mqtt.MQTTClient
 	Core       *CoreService
-	queries    *sqlitegen.Queries
+	queries    *localdb.Queries
 }
 
 // NewServices creates a new local services instance.
-func NewServices(l *slog.Logger, db *sql.DB, queries *sqlitegen.Queries, mqttClient *mqtt.MQTTClient) *Services {
+func NewServices(l *slog.Logger, db *sql.DB, queries *localdb.Queries, mqttClient *mqtt.MQTTClient) *Services {
 	return &Services{
 		l:          l.With(slog.String("module", "local-services")),
 		mqttClient: mqttClient,

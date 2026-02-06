@@ -2,19 +2,17 @@
 // versions:
 //   sqlc v1.30.0
 
-package sqlitegen
+package clouddbgen
 
 import (
-	"database/sql"
-	"time"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type User struct {
-	ID        int64
+	ID        int32
 	Name      string
 	Email     string
 	Password  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	LastLogin sql.NullTime
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
 }

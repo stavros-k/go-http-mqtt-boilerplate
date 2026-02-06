@@ -21,7 +21,7 @@ import (
 
 	"http-mqtt-boilerplate/backend/internal/apicommon"
 	"http-mqtt-boilerplate/backend/internal/config"
-	sqlitegen "http-mqtt-boilerplate/backend/internal/database/sqlite/gen"
+	localdb "http-mqtt-boilerplate/backend/internal/database/localdb/gen"
 	"http-mqtt-boilerplate/backend/internal/localapi"
 	mqttapi "http-mqtt-boilerplate/backend/internal/mqtt"
 	localservices "http-mqtt-boilerplate/backend/internal/services/local"
@@ -59,8 +59,8 @@ func main() {
 
 	// Conditionally initialize database and queries
 	var (
-		db      *sql.DB            = nil
-		queries *sqlitegen.Queries = nil
+		db      *sql.DB          = nil
+		queries *localdb.Queries = nil
 	)
 
 	if !config.Generate {
@@ -77,7 +77,7 @@ func main() {
 		// Create queries based on dialect
 		switch config.Dialect {
 		case dialect.SQLite:
-			queries = sqlitegen.New(db)
+			queries = localdb.New(db)
 		case dialect.PostgreSQL:
 			fatalIfErr(logger, errors.New("PostgreSQL queries not yet implemented"))
 		default:

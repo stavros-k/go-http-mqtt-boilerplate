@@ -92,7 +92,7 @@ func (m *postgresMigrator) DumpSchema(filePath string) error {
 		return fmt.Errorf("failed to strip psql meta commands: %w", err)
 	}
 
-	schema := string(bytes.TrimSpace(schemaBytes))
+	schema := string(bytes.TrimSpace(schemaBytes)) + "\n"
 
 	if err := os.WriteFile(filePath, []byte(schema), 0o600); err != nil {
 		return fmt.Errorf("failed to write schema file: %w", err)

@@ -4,16 +4,14 @@ INSERT INTO "user" (
     email,
     password,
     created_at,
-    updated_at,
-    last_login
+    updated_at
   )
 VALUES (
     :name,
     :email,
     :password,
     :created_at,
-    :updated_at,
-    :last_login
+    :updated_at
   )
 RETURNING *;
 -- name: CreateUserWithPassword :one
@@ -22,15 +20,13 @@ INSERT INTO "user" (
     email,
     password,
     created_at,
-    updated_at,
-    last_login
+    updated_at
   )
 VALUES (
     :name,
     :email,
     :password,
     :created_at,
-    :updated_at,
-    :last_login
+    :updated_at
   )
 RETURNING *;

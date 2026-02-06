@@ -2,17 +2,19 @@
 // versions:
 //   sqlc v1.30.0
 
-package postgresgen
+package localdbgen
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"database/sql"
+	"time"
 )
 
 type User struct {
-	ID        int32
+	ID        int64
 	Name      string
 	Email     string
 	Password  string
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	LastLogin sql.NullTime
 }

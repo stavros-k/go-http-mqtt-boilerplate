@@ -17,7 +17,7 @@ import (
 	"http-mqtt-boilerplate/backend/internal/apicommon"
 	"http-mqtt-boilerplate/backend/internal/cloudapi"
 	"http-mqtt-boilerplate/backend/internal/config"
-	postgresgen "http-mqtt-boilerplate/backend/internal/database/postgres/gen"
+	clouddb "http-mqtt-boilerplate/backend/internal/database/clouddb/gen"
 	cloudservices "http-mqtt-boilerplate/backend/internal/services/cloud"
 	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"http-mqtt-boilerplate/backend/pkg/generate"
@@ -52,8 +52,8 @@ func main() {
 
 	// Conditionally initialize database and queries
 	var (
-		db      *pgx.Conn            = nil
-		queries *postgresgen.Queries = nil
+		db      *pgx.Conn        = nil
+		queries *clouddb.Queries = nil
 	)
 
 	if !config.Generate {
@@ -71,7 +71,7 @@ func main() {
 			}
 		}()
 
-		queries = postgresgen.New(db)
+		queries = clouddb.New(db)
 	}
 
 	// Builders

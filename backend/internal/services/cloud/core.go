@@ -2,8 +2,9 @@ package cloud
 
 import (
 	"context"
-	postgresgen "http-mqtt-boilerplate/backend/internal/database/postgres/gen"
 	"log/slog"
+
+	clouddb "http-mqtt-boilerplate/backend/internal/database/clouddb/gen"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -12,11 +13,11 @@ import (
 type CoreService struct {
 	l  *slog.Logger
 	db *pgx.Conn
-	q  *postgresgen.Queries
+	q  *clouddb.Queries
 }
 
 // NewCoreService creates a new core service instance.
-func NewCoreService(l *slog.Logger, db *pgx.Conn, queries *postgresgen.Queries) *CoreService {
+func NewCoreService(l *slog.Logger, db *pgx.Conn, queries *clouddb.Queries) *CoreService {
 	return &CoreService{
 		l:  l.With(slog.String("service", "core")),
 		db: db,
