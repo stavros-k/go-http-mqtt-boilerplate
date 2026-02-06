@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"http-mqtt-boilerplate/backend/internal/apicommon"
@@ -52,7 +52,7 @@ func main() {
 
 	// Conditionally initialize database and queries
 	var (
-		db      *pgx.Conn        = nil
+		pool    *pgxpool.Pool    = nil
 		queries *clouddb.Queries = nil
 	)
 
@@ -62,16 +62,14 @@ func main() {
 			fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
 		}
 
-		db, err = pgx.Connect(context.TODO(), config.Database)
+		pool, err = pgxpool.New(context.TODO(), config.Database)
 		fatalIfErr(logger, err)
 
 		defer func() {
-			if err := db.Close(context.TODO()); err != nil {
-				logger.Error("failed to close database", utils.ErrAttr(err))
-			}
+			pool.Close()
 		}()
 
-		queries = clouddb.New(db)
+		queries = clouddb.New(pool)
 	}
 
 	// Builders
@@ -79,7 +77,7 @@ func main() {
 	fatalIfErr(logger, err)
 
 	// Create services
-	services := cloudservices.NewServices(logger, db, queries)
+	services := cloudservices.NewServices(logger, pool, queries)
 	apiHandler := cloudapi.NewHandler(logger, services)
 
 	registerHTTPHandlers(logger, rb, apiHandler)

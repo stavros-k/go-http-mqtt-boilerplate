@@ -6,18 +6,18 @@ import (
 
 	clouddb "http-mqtt-boilerplate/backend/internal/database/clouddb/gen"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // CoreService handles core business logic for the cloud API.
 type CoreService struct {
 	l  *slog.Logger
-	db *pgx.Conn
+	db *pgxpool.Pool
 	q  *clouddb.Queries
 }
 
 // NewCoreService creates a new core service instance.
-func NewCoreService(l *slog.Logger, db *pgx.Conn, queries *clouddb.Queries) *CoreService {
+func NewCoreService(l *slog.Logger, db *pgxpool.Pool, queries *clouddb.Queries) *CoreService {
 	return &CoreService{
 		l:  l.With(slog.String("service", "core")),
 		db: db,
