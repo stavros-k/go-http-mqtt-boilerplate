@@ -154,8 +154,8 @@ func (m *postgresMigrator) getTableNames(ctx context.Context, db *sql.DB, schema
 	}
 
 	defer func() {
-		if err := rows.Err(); err != nil {
-			m.l.Error("failed to iterate tables", utils.ErrAttr(err))
+		if err := rows.Close(); err != nil {
+			m.l.Error("failed to close tables rows", utils.ErrAttr(err))
 		}
 	}()
 

@@ -226,8 +226,6 @@ export type Docs = APIDocumentation;
 export function getTypeJson(typeName: string | "null"): string | null {
     if (typeName === "null") return null;
     const type = docs.types[typeName];
-    if (!type?.representations) return null;
-
     return type.representations.json;
 }
 
