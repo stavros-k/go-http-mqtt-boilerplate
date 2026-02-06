@@ -2,7 +2,7 @@ package mqtt
 
 import (
 	"encoding/json"
-	"http-mqtt-boilerplate/backend/pkg/apitypes"
+	"http-mqtt-boilerplate/backend/pkg/types/localapi"
 	"http-mqtt-boilerplate/backend/pkg/mqtt"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
@@ -25,18 +25,18 @@ func (s *Handler) RegisterDeviceCommandPublish(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: apitypes.DeviceCommand{
+		MessageType: localapi.DeviceCommand{
 			DeviceID: "device-001",
 			Command:  "restart",
 		},
 		QoS:      mqtt.QoSAtLeastOnce,
 		Retained: false,
 		Examples: map[string]any{
-			"restart": apitypes.DeviceCommand{
+			"restart": localapi.DeviceCommand{
 				DeviceID: "device-001",
 				Command:  "restart",
 			},
-			"updateConfig": apitypes.DeviceCommand{
+			"updateConfig": localapi.DeviceCommand{
 				DeviceID: "device-001",
 				Command:  "update_config",
 				Parameters: map[string]string{
@@ -62,14 +62,14 @@ func (s *Handler) RegisterDeviceCommandSubscribe(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: apitypes.DeviceCommand{
+		MessageType: localapi.DeviceCommand{
 			DeviceID: "device-001",
 			Command:  "restart",
 		},
 		Handler: s.handleDeviceCommand,
 		QoS:     mqtt.QoSAtLeastOnce,
 		Examples: map[string]any{
-			"restart": apitypes.DeviceCommand{
+			"restart": localapi.DeviceCommand{
 				DeviceID: "device-001",
 				Command:  "restart",
 			},
@@ -79,7 +79,7 @@ func (s *Handler) RegisterDeviceCommandSubscribe(mb *mqtt.MQTTBuilder) {
 
 // handleDeviceCommand handles incoming device commands.
 func (s *Handler) handleDeviceCommand(client pahomqtt.Client, msg pahomqtt.Message) {
-	var command apitypes.DeviceCommand
+	var command localapi.DeviceCommand
 	if err := json.Unmarshal(msg.Payload(), &command); err != nil {
 		s.l.Error("Failed to unmarshal device command",
 			slog.String("topic", msg.Topic()),
@@ -111,7 +111,7 @@ func (s *Handler) RegisterDeviceStatusPublish(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: apitypes.DeviceStatus{
+		MessageType: localapi.DeviceStatus{
 			DeviceID:  "device-001",
 			Status:    "online",
 			Uptime:    3600,
@@ -120,13 +120,13 @@ func (s *Handler) RegisterDeviceStatusPublish(mb *mqtt.MQTTBuilder) {
 		QoS:      mqtt.QoSAtLeastOnce,
 		Retained: true,
 		Examples: map[string]any{
-			"online": apitypes.DeviceStatus{
+			"online": localapi.DeviceStatus{
 				DeviceID:  "device-001",
 				Status:    "online",
 				Uptime:    3600,
 				Timestamp: time.Time{},
 			},
-			"offline": apitypes.DeviceStatus{
+			"offline": localapi.DeviceStatus{
 				DeviceID:  "device-001",
 				Status:    "offline",
 				Uptime:    0,
@@ -150,7 +150,7 @@ func (s *Handler) RegisterDeviceStatusSubscribe(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: apitypes.DeviceStatus{
+		MessageType: localapi.DeviceStatus{
 			DeviceID:  "device-001",
 			Status:    "online",
 			Uptime:    3600,
@@ -159,7 +159,7 @@ func (s *Handler) RegisterDeviceStatusSubscribe(mb *mqtt.MQTTBuilder) {
 		Handler: s.handleDeviceStatus,
 		QoS:     mqtt.QoSAtLeastOnce,
 		Examples: map[string]any{
-			"online": apitypes.DeviceStatus{
+			"online": localapi.DeviceStatus{
 				DeviceID:  "device-001",
 				Status:    "online",
 				Uptime:    3600,
@@ -171,7 +171,7 @@ func (s *Handler) RegisterDeviceStatusSubscribe(mb *mqtt.MQTTBuilder) {
 
 // handleDeviceStatus handles incoming device status updates.
 func (s *Handler) handleDeviceStatus(client pahomqtt.Client, msg pahomqtt.Message) {
-	var status apitypes.DeviceStatus
+	var status localapi.DeviceStatus
 	if err := json.Unmarshal(msg.Payload(), &status); err != nil {
 		s.l.Error("Failed to unmarshal device status",
 			slog.String("topic", msg.Topic()),

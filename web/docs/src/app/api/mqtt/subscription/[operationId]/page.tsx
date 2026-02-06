@@ -3,14 +3,17 @@ import { BackButton } from "@/components/back-button";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CardBoxWrapper } from "@/components/card-box-wrapper";
 import { CodeWrapper } from "@/components/code-wrapper";
-import { CollapsibleCard } from "@/components/collapsible-group";
 import { Deprecation } from "@/components/deprecation";
+import { ExamplesSection } from "@/components/examples-section";
 import { Group } from "@/components/group";
 import { MQTTTopicHeader } from "@/components/mqtt-topic-header";
 import { getAllMQTTSubscriptions, getTypeJson, type TypeKeys } from "@/data/api";
 
 export function generateStaticParams() {
     const subscriptions = getAllMQTTSubscriptions();
+    if (subscriptions.length === 0) {
+        return [{ operationId: "__no-mqtt-subscriptions__" }];
+    }
     return subscriptions.map((subscription) => ({
         operationId: subscription.operationID,
     }));
@@ -29,6 +32,19 @@ export default async function MQTTSubscriptionPage(props: PageProps<"/api/mqtt/s
     const { operationId } = params;
 
     const allSubscriptions = getAllMQTTSubscriptions();
+
+    // Handle the case where there are no MQTT subscriptions (e.g., cloud API)
+    if (operationId === "__no-mqtt-subscriptions__") {
+        return (
+            <div className='flex-1 overflow-y-auto p-10'>
+                <div className='rounded-lg border border-border-secondary bg-bg-tertiary p-8 text-center'>
+                    <h1 className='mb-2 font-bold text-2xl'>No MQTT Subscriptions Available</h1>
+                    <p className='text-text-secondary'>This API does not include any MQTT subscription endpoints.</p>
+                </div>
+            </div>
+        );
+    }
+
     const subscription = allSubscriptions.find((sub) => sub.operationID === operationId);
 
     if (!subscription) {
@@ -114,24 +130,7 @@ export default async function MQTTSubscriptionPage(props: PageProps<"/api/mqtt/s
             </CardBoxWrapper>
 
             {/* Examples */}
-            {subscription.examples && Object.keys(subscription.examples).length > 0 && (
-                <CardBoxWrapper title='Examples'>
-                    <div className='space-y-3'>
-                        {Object.entries(subscription.examples).map(([exampleKey, exampleValue]) => (
-                            <CollapsibleCard
-                                key={exampleKey}
-                                title={exampleKey}
-                                defaultOpen={Object.keys(subscription.examples).length === 1}>
-                                <CodeWrapper
-                                    label={{ text: "Example" }}
-                                    code={exampleValue}
-                                    lang='json'
-                                />
-                            </CollapsibleCard>
-                        ))}
-                    </div>
-                </CardBoxWrapper>
-            )}
+            <ExamplesSection examples={subscription.examples} />
         </div>
     );
 }

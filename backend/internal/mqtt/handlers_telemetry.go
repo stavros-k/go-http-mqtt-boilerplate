@@ -2,7 +2,7 @@ package mqtt
 
 import (
 	"encoding/json"
-	"http-mqtt-boilerplate/backend/pkg/apitypes"
+	"http-mqtt-boilerplate/backend/pkg/types/localapi"
 	"http-mqtt-boilerplate/backend/pkg/mqtt"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
@@ -26,7 +26,7 @@ func (s *Handler) RegisterTemperaturePublish(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: apitypes.TemperatureReading{
+		MessageType: localapi.TemperatureReading{
 			DeviceID:    "device-001",
 			Temperature: 22.5,
 			Unit:        "celsius",
@@ -35,13 +35,13 @@ func (s *Handler) RegisterTemperaturePublish(mb *mqtt.MQTTBuilder) {
 		QoS:      mqtt.QoSAtLeastOnce,
 		Retained: true,
 		Examples: map[string]any{
-			"normal": apitypes.TemperatureReading{
+			"normal": localapi.TemperatureReading{
 				DeviceID:    "device-001",
 				Temperature: 22.5,
 				Unit:        "celsius",
 				Timestamp:   time.Time{},
 			},
-			"fahrenheit": apitypes.TemperatureReading{
+			"fahrenheit": localapi.TemperatureReading{
 				DeviceID:    "device-002",
 				Temperature: 72.5,
 				Unit:        "fahrenheit",
@@ -65,7 +65,7 @@ func (s *Handler) RegisterTemperatureSubscribe(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: apitypes.TemperatureReading{
+		MessageType: localapi.TemperatureReading{
 			DeviceID:    "device-001",
 			Temperature: 22.5,
 			Unit:        "celsius",
@@ -74,7 +74,7 @@ func (s *Handler) RegisterTemperatureSubscribe(mb *mqtt.MQTTBuilder) {
 		Handler: s.handleTemperature,
 		QoS:     mqtt.QoSAtLeastOnce,
 		Examples: map[string]any{
-			"normal": apitypes.TemperatureReading{
+			"normal": localapi.TemperatureReading{
 				DeviceID:    "device-001",
 				Temperature: 22.5,
 				Unit:        "celsius",
@@ -86,7 +86,7 @@ func (s *Handler) RegisterTemperatureSubscribe(mb *mqtt.MQTTBuilder) {
 
 // handleTemperature handles incoming temperature readings.
 func (s *Handler) handleTemperature(client pahomqtt.Client, msg pahomqtt.Message) {
-	var reading apitypes.TemperatureReading
+	var reading localapi.TemperatureReading
 	if err := json.Unmarshal(msg.Payload(), &reading); err != nil {
 		s.l.Error("Failed to unmarshal temperature reading", slog.String("topic", msg.Topic()), utils.ErrAttr(err))
 
@@ -118,7 +118,7 @@ func (s *Handler) RegisterSensorTelemetryPublish(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: apitypes.SensorTelemetry{
+		MessageType: localapi.SensorTelemetry{
 			DeviceID:   "device-001",
 			SensorType: "humidity",
 			Value:      65.5,
@@ -129,7 +129,7 @@ func (s *Handler) RegisterSensorTelemetryPublish(mb *mqtt.MQTTBuilder) {
 		QoS:      mqtt.QoSAtLeastOnce,
 		Retained: false,
 		Examples: map[string]any{
-			"humidity": apitypes.SensorTelemetry{
+			"humidity": localapi.SensorTelemetry{
 				DeviceID:   "device-001",
 				SensorType: "humidity",
 				Value:      65.5,
@@ -137,7 +137,7 @@ func (s *Handler) RegisterSensorTelemetryPublish(mb *mqtt.MQTTBuilder) {
 				Timestamp:  time.Time{},
 				Quality:    95,
 			},
-			"pressure": apitypes.SensorTelemetry{
+			"pressure": localapi.SensorTelemetry{
 				DeviceID:   "device-001",
 				SensorType: "pressure",
 				Value:      1013.25,
@@ -168,7 +168,7 @@ func (s *Handler) RegisterSensorTelemetrySubscribe(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: apitypes.SensorTelemetry{
+		MessageType: localapi.SensorTelemetry{
 			DeviceID:   "device-001",
 			SensorType: "humidity",
 			Value:      65.5,
@@ -179,7 +179,7 @@ func (s *Handler) RegisterSensorTelemetrySubscribe(mb *mqtt.MQTTBuilder) {
 		Handler: s.handleSensorTelemetry,
 		QoS:     mqtt.QoSAtLeastOnce,
 		Examples: map[string]any{
-			"humidity": apitypes.SensorTelemetry{
+			"humidity": localapi.SensorTelemetry{
 				DeviceID:   "device-001",
 				SensorType: "humidity",
 				Value:      65.5,
@@ -193,7 +193,7 @@ func (s *Handler) RegisterSensorTelemetrySubscribe(mb *mqtt.MQTTBuilder) {
 
 // handleSensorTelemetry handles incoming sensor telemetry data.
 func (s *Handler) handleSensorTelemetry(client pahomqtt.Client, msg pahomqtt.Message) {
-	var telemetry apitypes.SensorTelemetry
+	var telemetry localapi.SensorTelemetry
 	if err := json.Unmarshal(msg.Payload(), &telemetry); err != nil {
 		s.l.Error("Failed to unmarshal sensor telemetry", slog.String("topic", msg.Topic()), utils.ErrAttr(err))
 

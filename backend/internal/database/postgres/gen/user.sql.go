@@ -17,18 +17,10 @@ INSERT INTO "user" (
     email,
     password,
     created_at,
-    updated_at,
-    last_login
+    updated_at
   )
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6
-  )
-RETURNING id, name, email, password, created_at, updated_at, last_login
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, email, password, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -37,7 +29,6 @@ type CreateUserParams struct {
 	Password  string
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
-	LastLogin pgtype.Timestamp
 }
 
 // CreateUser
@@ -47,18 +38,10 @@ type CreateUserParams struct {
 //	    email,
 //	    password,
 //	    created_at,
-//	    updated_at,
-//	    last_login
+//	    updated_at
 //	  )
-//	VALUES (
-//	    $1,
-//	    $2,
-//	    $3,
-//	    $4,
-//	    $5,
-//	    $6
-//	  )
-//	RETURNING id, name, email, password, created_at, updated_at, last_login
+//	VALUES ($1, $2, $3, $4, $5)
+//	RETURNING id, name, email, password, created_at, updated_at
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUser,
 		arg.Name,
@@ -66,7 +49,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Password,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.LastLogin,
 	)
 	var i User
 	err := row.Scan(
@@ -76,7 +58,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.LastLogin,
 	)
 	return i, err
 }
@@ -87,18 +68,10 @@ INSERT INTO "user" (
     email,
     password,
     created_at,
-    updated_at,
-    last_login
+    updated_at
   )
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6
-  )
-RETURNING id, name, email, password, created_at, updated_at, last_login
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, email, password, created_at, updated_at
 `
 
 type CreateUserWithPasswordParams struct {
@@ -107,7 +80,6 @@ type CreateUserWithPasswordParams struct {
 	Password  string
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
-	LastLogin pgtype.Timestamp
 }
 
 // CreateUserWithPassword
@@ -117,18 +89,10 @@ type CreateUserWithPasswordParams struct {
 //	    email,
 //	    password,
 //	    created_at,
-//	    updated_at,
-//	    last_login
+//	    updated_at
 //	  )
-//	VALUES (
-//	    $1,
-//	    $2,
-//	    $3,
-//	    $4,
-//	    $5,
-//	    $6
-//	  )
-//	RETURNING id, name, email, password, created_at, updated_at, last_login
+//	VALUES ($1, $2, $3, $4, $5)
+//	RETURNING id, name, email, password, created_at, updated_at
 func (q *Queries) CreateUserWithPassword(ctx context.Context, arg CreateUserWithPasswordParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUserWithPassword,
 		arg.Name,
@@ -136,7 +100,6 @@ func (q *Queries) CreateUserWithPassword(ctx context.Context, arg CreateUserWith
 		arg.Password,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.LastLogin,
 	)
 	var i User
 	err := row.Scan(
@@ -146,7 +109,6 @@ func (q *Queries) CreateUserWithPassword(ctx context.Context, arg CreateUserWith
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.LastLogin,
 	)
 	return i, err
 }

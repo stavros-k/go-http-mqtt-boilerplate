@@ -1,4 +1,4 @@
-package api
+package apicommon
 
 import (
 	"log/slog"
@@ -91,11 +91,11 @@ func wrapResponseWriter(w http.ResponseWriter) (*responseWriter, http.ResponseWr
 }
 
 // LoggerMiddleware adds a request-scoped logger to the context and logs requests.
-func (s *Handler) LoggerMiddleware(next http.Handler) http.Handler {
+func (m *MiddlewareHandler) LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestID := GetRequestID(r.Context())
 		// Create request-scoped logger with context
-		reqLogger := s.l.With(
+		reqLogger := m.l.With(
 			slog.String("request_id", requestID),
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),

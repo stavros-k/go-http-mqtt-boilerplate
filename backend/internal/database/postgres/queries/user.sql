@@ -4,17 +4,9 @@ INSERT INTO "user" (
     email,
     password,
     created_at,
-    updated_at,
-    last_login
+    updated_at
   )
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6
-  )
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 -- name: CreateUserWithPassword :one
 INSERT INTO "user" (
@@ -22,15 +14,7 @@ INSERT INTO "user" (
     email,
     password,
     created_at,
-    updated_at,
-    last_login
+    updated_at
   )
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6
-  )
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;

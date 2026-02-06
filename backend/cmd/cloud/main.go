@@ -4,16 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"http-mqtt-boilerplate/backend/internal/api"
-	"http-mqtt-boilerplate/backend/internal/config"
-	postgresgen "http-mqtt-boilerplate/backend/internal/database/postgres/gen"
-	"http-mqtt-boilerplate/backend/internal/services"
-	"http-mqtt-boilerplate/backend/pkg/dialect"
-	"http-mqtt-boilerplate/backend/pkg/generate"
-	"http-mqtt-boilerplate/backend/pkg/migrator"
-	"http-mqtt-boilerplate/backend/pkg/router"
-	"http-mqtt-boilerplate/backend/pkg/utils"
-	"http-mqtt-boilerplate/web"
 	"log/slog"
 	"net/http"
 	"os"
@@ -23,6 +13,18 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"http-mqtt-boilerplate/backend/internal/apicommon"
+	"http-mqtt-boilerplate/backend/internal/cloudapi"
+	"http-mqtt-boilerplate/backend/internal/config"
+	postgresgen "http-mqtt-boilerplate/backend/internal/database/postgres/gen"
+	cloudservices "http-mqtt-boilerplate/backend/internal/services/cloud"
+	"http-mqtt-boilerplate/backend/pkg/dialect"
+	"http-mqtt-boilerplate/backend/pkg/generate"
+	"http-mqtt-boilerplate/backend/pkg/migrator"
+	"http-mqtt-boilerplate/backend/pkg/router"
+	"http-mqtt-boilerplate/backend/pkg/utils"
+	"http-mqtt-boilerplate/web"
 )
 
 const (
@@ -44,38 +46,45 @@ func main() {
 	// Initialize logger
 	logger := getLogger(config)
 
-	// Run migrations before opening database connection
-	if err := runMigrations(logger, config); err != nil {
-		fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
-	}
-
-	db, err := pgx.Connect(context.TODO(), config.Database)
-	fatalIfErr(logger, err)
-
-	defer func() {
-		if err := db.Close(context.TODO()); err != nil {
-			logger.Error("failed to close database", utils.ErrAttr(err))
-		}
-	}()
-
-	queries := postgresgen.New(db)
-	_ = queries
-
 	// Create collector for OpenAPI generation
 	collector, err := getCollector(config, logger)
 	fatalIfErr(logger, err)
+
+	// Conditionally initialize database and queries
+	var (
+		db      *pgx.Conn            = nil
+		queries *postgresgen.Queries = nil
+	)
+
+	if !config.Generate {
+		// For runtime, initialize database
+		if err := runMigrations(logger, config); err != nil {
+			fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
+		}
+
+		db, err = pgx.Connect(context.TODO(), config.Database)
+		fatalIfErr(logger, err)
+
+		defer func() {
+			if err := db.Close(context.TODO()); err != nil {
+				logger.Error("failed to close database", utils.ErrAttr(err))
+			}
+		}()
+
+		queries = postgresgen.New(db)
+	}
 
 	// Builders
 	rb, err := router.NewRouteBuilder(logger, collector)
 	fatalIfErr(logger, err)
 
-
-	// Now create services with the initialized MQTT client
-	services := services.NewServices(logger, nil, nil, nil)
-	apiHandler := api.NewAPIHandler(logger, services)
+	// Create services
+	services := cloudservices.NewServices(logger, db, queries)
+	apiHandler := cloudapi.NewHandler(logger, services)
 
 	registerHTTPHandlers(logger, rb, apiHandler)
 
+	// If generating, generate and exit
 	if config.Generate {
 		if err := collector.Generate(); err != nil {
 			fatalIfErr(logger, fmt.Errorf("failed to generate API documentation: %w", err))
@@ -115,29 +124,24 @@ func main() {
 		logger.Error("http server shutdown failed", utils.ErrAttr(err))
 	}
 
-
 	logger.Info("server exited gracefully")
 }
 
-
 // registerHTTPHandlers registers all HTTP handlers.
-func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *api.Handler) {
+func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *cloudapi.Handler) {
 	l.Info("Registering HTTP handlers...")
+
+	// Create middleware handler
+	mw := apicommon.NewMiddlewareHandler(l)
+
 	rb.Route("/api", func(rb *router.RouteBuilder) {
 		// Add request ID
-		rb.Use(h.RequestIDMiddleware)
+		rb.Use(mw.RequestIDMiddleware)
 		// Add request logger
-		rb.Use(h.LoggerMiddleware)
+		rb.Use(mw.LoggerMiddleware)
 
 		h.RegisterPing("/ping", rb)
 		h.RegisterHealth("/health", rb)
-
-		rb.Route("/team", func(rb *router.RouteBuilder) {
-			h.RegisterGetTeam("/{teamID}", rb)
-			h.RegisterPutTeam("/", rb)
-			h.RegisterCreateTeam("/", rb)
-			h.RegisterDeleteTeam("/", rb)
-		})
 	})
 
 	webapp, err := web.DocsApp()
@@ -151,7 +155,6 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *api.Handle
 	l.Info("HTTP handlers registered successfully")
 }
 
-
 //nolint:ireturn // Returns MetadataCollector interface (OpenAPICollector or NoopCollector)
 func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector, error) {
 	if !c.Generate {
@@ -159,7 +162,10 @@ func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector,
 	}
 
 	return generate.NewOpenAPICollector(l, generate.OpenAPICollectorOptions{
-		GoTypesDirPath:               "backend/pkg/apitypes",
+		GoTypesDirPaths: []string{
+			"backend/pkg/types/common",   // Common types (ErrorResponse, etc.)
+			"backend/pkg/types/cloudapi", // Cloud-specific types
+		},
 		DatabaseSchemaFileOutputPath: "api_cloud/schema.sql",
 		DocsFileOutputPath:           "api_cloud/api_docs.json",
 		OpenAPISpecOutputPath:        "api_cloud/openapi.yaml",

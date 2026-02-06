@@ -68,7 +68,7 @@ components:
             type: object
         HealthResponse:
             additionalProperties: false
-            description: HealthResponse is the response to a health check request.
+            description: HealthResponse is the response to a health check request for local API. Local API includes both database and MQTT status.
             properties:
                 database:
                     description: Status of the database connection
@@ -125,7 +125,7 @@ components:
 info:
     description: Local API Documentation
     title: Local API
-    version: vdev (unknown)
+    version: vdev (48f5d5e-dirty)
 openapi: 3.0.3
 paths:
     /api/health:

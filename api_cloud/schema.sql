@@ -1,5 +1,3 @@
-\restrict dbmate
-
 -- Dumped from database version 17.7
 -- Dumped by pg_dump version 18.1
 
@@ -133,6 +131,13 @@ ALTER TABLE ONLY public."user"
 
 
 --
+-- Name: user_name_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX user_name_idx ON public."user" USING btree (name);
+
+
+--
 -- Name: user fk_user_some_table; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -144,7 +149,6 @@ ALTER TABLE ONLY public."user"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dbmate
 
 
 --

@@ -14,5 +14,8 @@ CREATE TABLE IF NOT EXISTS "user" (
   "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_user_some_table FOREIGN KEY (id) REFERENCES "some-table" (id) ON DELETE CASCADE
 );
+CREATE INDEX "user_name_idx" ON "user" ("name");
 -- migrate:down
 DROP TABLE IF EXISTS "user";
+DROP TABLE IF EXISTS "some-table";
+DROP INDEX IF EXISTS "user_name_idx";

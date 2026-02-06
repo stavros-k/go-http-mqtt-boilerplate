@@ -1,4 +1,4 @@
-package api
+package apicommon
 
 import (
 	"context"
@@ -12,6 +12,8 @@ var (
 	loggerKey    = contextKey{}
 	requestIDKey = contextKey{}
 )
+
+const zeroUUIDForContext = "00000000-0000-0000-0000-000000000000"
 
 // WithLogger adds a request-scoped logger to the context.
 func WithLogger(ctx context.Context, logger *slog.Logger) context.Context {
@@ -32,10 +34,11 @@ func WithRequestID(ctx context.Context, requestID string) context.Context {
 	return context.WithValue(ctx, requestIDKey, requestID)
 }
 
+// GetRequestID retrieves the request ID from context.
 func GetRequestID(ctx context.Context) string {
 	if requestID, ok := ctx.Value(requestIDKey).(string); ok {
 		return requestID
 	}
 
-	return zeroUUID
+	return zeroUUIDForContext
 }

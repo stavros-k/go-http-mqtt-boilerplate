@@ -1,6 +1,7 @@
 package migrator
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"embed"
@@ -10,8 +11,10 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"net/url"
+	"os"
 
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
+	"github.com/amacneil/dbmate/v2/pkg/dbutil"
 	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -76,6 +79,23 @@ func (m *postgresMigrator) DumpSchema(filePath string) error {
 
 	if err := m.db.DumpSchema(); err != nil {
 		return fmt.Errorf("failed to dump schema: %w", err)
+	}
+
+	// read the schema file
+	schemaBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read schema file: %w", err)
+	}
+
+	schemaBytes, err = dbutil.StripPsqlMetaCommands(schemaBytes)
+	if err != nil {
+		return fmt.Errorf("failed to strip psql meta commands: %w", err)
+	}
+
+	schema := string(bytes.TrimSpace(schemaBytes))
+
+	if err := os.WriteFile(filePath, []byte(schema), 0o600); err != nil {
+		return fmt.Errorf("failed to write schema file: %w", err)
 	}
 
 	return nil
@@ -321,15 +341,15 @@ func (m *postgresMigrator) getTableIndexes(ctx context.Context, db *sql.DB, sche
 
 	for rows.Next() {
 		var (
-			idx  dbstats.Index
-			cols []string
+			idx     dbstats.Index
+			colsStr string
 		)
 
-		if err := rows.Scan(&idx.Name, &idx.Unique, &cols); err != nil {
+		if err := rows.Scan(&idx.Name, &idx.Unique, &colsStr); err != nil {
 			return nil, fmt.Errorf("failed to scan index: %w", err)
 		}
 
-		idx.Columns = cols
+		idx.Columns = parsePostgresArray(colsStr)
 		indexes = append(indexes, idx)
 	}
 
@@ -338,4 +358,62 @@ func (m *postgresMigrator) getTableIndexes(ctx context.Context, db *sql.DB, sche
 	}
 
 	return indexes, nil
+}
+
+// parsePostgresArray parses a PostgreSQL array string like "{col1,col2,col3}" into a Go slice.
+func parsePostgresArray(s string) []string {
+	if len(s) < 2 || s[0] != '{' || s[len(s)-1] != '}' {
+		return nil
+	}
+
+	// Remove braces and split by comma
+	inner := s[1 : len(s)-1]
+	if inner == "" {
+		return []string{}
+	}
+
+	// Simple split - doesn't handle quoted elements with commas, but column names don't have commas
+	parts := make([]string, 0, 10)
+	parts = append(parts, splitPostgresArray(inner)...)
+
+	return parts
+}
+
+// splitPostgresArray splits a PostgreSQL array content by commas.
+func splitPostgresArray(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+
+	var (
+		result  []string
+		current string
+	)
+
+	inQuotes := false
+
+	for i := range len(s) {
+		ch := s[i]
+
+		if ch == '"' {
+			inQuotes = !inQuotes
+
+			continue
+		}
+
+		if ch == ',' && !inQuotes {
+			result = append(result, current)
+			current = ""
+
+			continue
+		}
+
+		current += string(ch)
+	}
+
+	if current != "" {
+		result = append(result, current)
+	}
+
+	return result
 }

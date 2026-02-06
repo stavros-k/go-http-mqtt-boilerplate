@@ -5,18 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"http-mqtt-boilerplate/backend/internal/api"
-	"http-mqtt-boilerplate/backend/internal/config"
-	sqlitegen "http-mqtt-boilerplate/backend/internal/database/sqlite/gen"
-	mqttapi "http-mqtt-boilerplate/backend/internal/mqtt"
-	"http-mqtt-boilerplate/backend/internal/services"
-	"http-mqtt-boilerplate/backend/pkg/dialect"
-	"http-mqtt-boilerplate/backend/pkg/generate"
-	"http-mqtt-boilerplate/backend/pkg/migrator"
-	"http-mqtt-boilerplate/backend/pkg/mqtt"
-	"http-mqtt-boilerplate/backend/pkg/router"
-	"http-mqtt-boilerplate/backend/pkg/utils"
-	"http-mqtt-boilerplate/web"
 	"log/slog"
 	"net/http"
 	"os"
@@ -30,6 +18,20 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
+
+	"http-mqtt-boilerplate/backend/internal/apicommon"
+	"http-mqtt-boilerplate/backend/internal/config"
+	sqlitegen "http-mqtt-boilerplate/backend/internal/database/sqlite/gen"
+	"http-mqtt-boilerplate/backend/internal/localapi"
+	mqttapi "http-mqtt-boilerplate/backend/internal/mqtt"
+	localservices "http-mqtt-boilerplate/backend/internal/services/local"
+	"http-mqtt-boilerplate/backend/pkg/dialect"
+	"http-mqtt-boilerplate/backend/pkg/generate"
+	"http-mqtt-boilerplate/backend/pkg/migrator"
+	"http-mqtt-boilerplate/backend/pkg/mqtt"
+	"http-mqtt-boilerplate/backend/pkg/router"
+	"http-mqtt-boilerplate/backend/pkg/utils"
+	"http-mqtt-boilerplate/web"
 )
 
 const (
@@ -51,33 +53,37 @@ func main() {
 	// Initialize logger
 	logger := getLogger(config)
 
-	// Run migrations before opening database connection
-	if err := runMigrations(logger, config); err != nil {
-		fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
-	}
-
-	db, err := sql.Open(config.Dialect.Driver(), config.Database)
-	fatalIfErr(logger, err)
-
-	defer utils.LogOnError(logger, db.Close, "failed to close database")
-
-	// Create queries based on dialect
-	var queries *sqlitegen.Queries
-
-	switch config.Dialect {
-	case dialect.SQLite:
-		queries = sqlitegen.New(db)
-	case dialect.PostgreSQL:
-		fatalIfErr(logger, errors.New("PostgreSQL queries not yet implemented"))
-	default:
-		fatalIfErr(logger, fmt.Errorf("unsupported dialect: %s", config.Dialect))
-	}
-
 	// Create collector for OpenAPI generation
 	collector, err := getCollector(config, logger)
 	fatalIfErr(logger, err)
 
-	// Create MQTT builder first, before services
+	// Conditionally initialize database and queries
+	var (
+		db      *sql.DB            = nil
+		queries *sqlitegen.Queries = nil
+	)
+
+	if !config.Generate {
+		// For runtime, initialize database
+		if err := runMigrations(logger, config); err != nil {
+			fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
+		}
+
+		db, err = sql.Open(config.Dialect.Driver(), config.Database)
+		fatalIfErr(logger, err)
+
+		defer utils.LogOnError(logger, db.Close, "failed to close database")
+
+		// Create queries based on dialect
+		switch config.Dialect {
+		case dialect.SQLite:
+			queries = sqlitegen.New(db)
+		case dialect.PostgreSQL:
+			fatalIfErr(logger, errors.New("PostgreSQL queries not yet implemented"))
+		default:
+			fatalIfErr(logger, fmt.Errorf("unsupported dialect: %s", config.Dialect))
+		}
+	}
 
 	// Builders
 	rb, err := router.NewRouteBuilder(logger, collector)
@@ -91,15 +97,16 @@ func main() {
 	})
 	fatalIfErr(logger, err)
 
-	// Now create services with the initialized MQTT client
-	services := services.NewServices(logger, db, queries, mb.Client())
-	apiHandler := api.NewAPIHandler(logger, services)
+	// Create services
+	services := localservices.NewServices(logger, db, queries, mb.Client())
+	apiHandler := localapi.NewHandler(logger, services)
 	mqttHandler := mqttapi.NewMQTTHandler(logger, services)
 
 	registerHTTPHandlers(logger, rb, apiHandler)
 	registerMQTTHandlers(logger, mb, mqttHandler)
 
 	if config.Generate {
+		// If generating, generate and exit
 		if err := collector.Generate(); err != nil {
 			fatalIfErr(logger, fmt.Errorf("failed to generate API documentation: %w", err))
 		}
@@ -190,13 +197,17 @@ func getMQTTServer(l *slog.Logger, addr string) (*mqttbroker.Server, error) {
 }
 
 // registerHTTPHandlers registers all HTTP handlers.
-func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *api.Handler) {
+func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *localapi.Handler) {
 	l.Info("Registering HTTP handlers...")
+
+	// Create middleware handler
+	mw := apicommon.NewMiddlewareHandler(l)
+
 	rb.Route("/api", func(rb *router.RouteBuilder) {
 		// Add request ID
-		rb.Use(h.RequestIDMiddleware)
+		rb.Use(mw.RequestIDMiddleware)
 		// Add request logger
-		rb.Use(h.LoggerMiddleware)
+		rb.Use(mw.LoggerMiddleware)
 
 		h.RegisterPing("/ping", rb)
 		h.RegisterHealth("/health", rb)
@@ -244,7 +255,10 @@ func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector,
 	}
 
 	return generate.NewOpenAPICollector(l, generate.OpenAPICollectorOptions{
-		GoTypesDirPath:               "backend/pkg/apitypes",
+		GoTypesDirPaths: []string{
+			"backend/pkg/types/common",   // Common types (ErrorResponse, etc.)
+			"backend/pkg/types/localapi", // Local-specific types (including IoT types)
+		},
 		DatabaseSchemaFileOutputPath: "api_local/schema.sql",
 		DocsFileOutputPath:           "api_local/api_docs.json",
 		OpenAPISpecOutputPath:        "api_local/openapi.yaml",

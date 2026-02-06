@@ -122,6 +122,8 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 		return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to get database stats: %w", err)
 	}
 
+	stats.NonNil()
+
 	g.l.Info("Database schema generated", slog.String("file", schemaOutputPath), slog.String("dialect", d.String()))
 
 	return schema, stats, nil

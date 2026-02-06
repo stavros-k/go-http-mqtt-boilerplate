@@ -4,9 +4,9 @@ import { BackButton } from "@/components/back-button";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CardBoxWrapper } from "@/components/card-box-wrapper";
 import { CodeWrapper } from "@/components/code-wrapper";
-import { CollapsibleCard } from "@/components/collapsible-group";
 import { CollapsibleResponse } from "@/components/collapsible-response";
 import { Deprecation } from "@/components/deprecation";
+import { ExamplesSection } from "@/components/examples-section";
 import { Group } from "@/components/group";
 import { OperationHeader } from "@/components/operation-header";
 import { getAllOperations, getTypeJson, type Response, type TypeKeys } from "@/data/api";
@@ -121,26 +121,15 @@ export default async function OperationPage(props: PageProps<"/api/operation/[op
                                             </Link>
                                         </div>
                                     </div>
-                                    {resp.examples && Object.keys(resp.examples).length > 0 ? (
-                                        <div className='space-y-3'>
-                                            {Object.entries(resp.examples).map(([exampleKey, exampleValue]) => (
-                                                <CollapsibleCard
-                                                    key={exampleKey}
-                                                    title={exampleKey}
-                                                    defaultOpen={Object.keys(resp.examples).length === 1}>
-                                                    <CodeWrapper
-                                                        label={{ text: "Example" }}
-                                                        code={exampleValue}
-                                                        lang='json'
-                                                    />
-                                                </CollapsibleCard>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className='rounded-lg border border-border-secondary bg-bg-tertiary p-4 text-sm text-text-tertiary'>
-                                            No examples available for this response.
-                                        </p>
-                                    )}
+                                    <ExamplesSection
+                                        examples={resp.examples}
+                                        title={false}
+                                        noExamplesMessage={
+                                            <p className='rounded-lg border border-border-secondary bg-bg-tertiary p-4 text-sm text-text-tertiary'>
+                                                No examples available for this response.
+                                            </p>
+                                        }
+                                    />
                                 </CollapsibleResponse>
                             );
                         })}

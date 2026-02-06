@@ -256,7 +256,9 @@ export default function Home() {
                                 </div>
                                 <div>
                                     <div className='mb-1 font-bold text-2xl text-info-text'>{foreignKeyCount}</div>
-                                    <p className='text-text-secondary text-xs'>Foreign Key{foreignKeyCount !== 1 ? "s" : ""}</p>
+                                    <p className='text-text-secondary text-xs'>
+                                        Foreign Key{foreignKeyCount !== 1 ? "s" : ""}
+                                    </p>
                                 </div>
                                 <div>
                                     <div className='mb-1 font-bold text-2xl text-info-text'>{indexCount}</div>

@@ -15,5 +15,4 @@ type User struct {
 	Password  string
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
-	LastLogin pgtype.Timestamp
 }

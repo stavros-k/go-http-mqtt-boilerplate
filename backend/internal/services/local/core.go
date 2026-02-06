@@ -1,31 +1,39 @@
-package services
+package local
 
 import (
 	"context"
 	"database/sql"
-	"http-mqtt-boilerplate/backend/pkg/mqtt"
 	"log/slog"
+
+	sqlitegen "http-mqtt-boilerplate/backend/internal/database/sqlite/gen"
+	"http-mqtt-boilerplate/backend/pkg/mqtt"
 )
 
+// CoreService handles core business logic for the local API.
 type CoreService struct {
 	l    *slog.Logger
 	mqtt *mqtt.MQTTClient
 	db   *sql.DB
+	q    *sqlitegen.Queries
 }
 
-func NewCoreService(l *slog.Logger, mqttClient *mqtt.MQTTClient, db *sql.DB) *CoreService {
+// NewCoreService creates a new core service instance.
+func NewCoreService(l *slog.Logger, mqttClient *mqtt.MQTTClient, db *sql.DB, queries *sqlitegen.Queries) *CoreService {
 	return &CoreService{
 		l:    l.With(slog.String("service", "core")),
 		mqtt: mqttClient,
 		db:   db,
+		q:    queries,
 	}
 }
 
+// HealthStatus represents the health status of local services.
 type HealthStatus struct {
 	Database bool
 	MQTT     bool
 }
 
+// Health checks the health of local services (database and MQTT).
 func (s *CoreService) Health(ctx context.Context) HealthStatus {
 	status := HealthStatus{
 		Database: true,
