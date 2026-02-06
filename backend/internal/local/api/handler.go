@@ -1,4 +1,4 @@
-package localapi
+package api
 
 import (
 	"log/slog"

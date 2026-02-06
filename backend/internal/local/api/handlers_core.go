@@ -1,17 +1,17 @@
-package localapi
+package api
 
 import (
 	"net/http"
 
-	"http-mqtt-boilerplate/backend/internal/shared/api"
+	localtypes "http-mqtt-boilerplate/backend/internal/local/api/types"
+	apitypes "http-mqtt-boilerplate/backend/internal/shared/api"
+	sharedtypes "http-mqtt-boilerplate/backend/internal/shared/types"
 	"http-mqtt-boilerplate/backend/pkg/router"
-	"http-mqtt-boilerplate/backend/pkg/types/common"
-	"http-mqtt-boilerplate/backend/pkg/types/localapi"
 )
 
 func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) error {
-	apicommon.RespondJSON(w, r, http.StatusOK, localapi.PingResponse{
-		Message: "Pong", Status: localapi.PingStatusOK,
+	apitypes.RespondJSON(w, r, http.StatusOK, sharedtypes.PingResponse{
+		Message: "Pong", Status: sharedtypes.PingStatusOK,
 	})
 
 	return nil
@@ -24,13 +24,13 @@ func (h *Handler) RegisterPing(path string, rb *router.RouteBuilder) {
 		Description: "Check if the server is alive",
 		Group:       CoreGroup,
 		RequestType: nil,
-		Handler:     apicommon.ErrorHandler(h.Ping),
-		Responses: apicommon.GenerateResponses(map[int]router.ResponseSpec{
+		Handler:     apitypes.ErrorHandler(h.Ping),
+		Responses: apitypes.GenerateResponses(map[int]router.ResponseSpec{
 			200: {
 				Description: "Successful ping response",
-				Type:        localapi.PingResponse{},
+				Type:        sharedtypes.PingResponse{},
 				Examples: map[string]any{
-					"Success": localapi.PingResponse{Message: "Pong", Status: localapi.PingStatusOK},
+					"Success": sharedtypes.PingResponse{Message: "Pong", Status: sharedtypes.PingStatusOK},
 				},
 			},
 		}),
@@ -39,7 +39,7 @@ func (h *Handler) RegisterPing(path string, rb *router.RouteBuilder) {
 
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) error {
 	status := h.svc.Core.Health(r.Context())
-	resp := localapi.HealthResponse{
+	resp := localtypes.HealthResponse{
 		Database: status.Database,
 		MQTT:     status.MQTT,
 	}
@@ -49,7 +49,7 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) error {
 		code = http.StatusServiceUnavailable
 	}
 
-	apicommon.RespondJSON(w, r, code, resp)
+	apitypes.RespondJSON(w, r, code, resp)
 
 	return nil
 }
@@ -61,27 +61,27 @@ func (h *Handler) RegisterHealth(path string, rb *router.RouteBuilder) {
 		Description: "Check if the server is healthy",
 		Group:       CoreGroup,
 		RequestType: nil,
-		Handler:     apicommon.ErrorHandler(h.Health),
-		Responses: apicommon.GenerateResponses(map[int]router.ResponseSpec{
+		Handler:     apitypes.ErrorHandler(h.Health),
+		Responses: apitypes.GenerateResponses(map[int]router.ResponseSpec{
 			200: {
 				Description: "Successful health response",
-				Type:        localapi.HealthResponse{},
+				Type:        localtypes.HealthResponse{},
 				Examples: map[string]any{
-					"Success": localapi.HealthResponse{Database: true, MQTT: true},
+					"Success": localtypes.HealthResponse{Database: true, MQTT: true},
 				},
 			},
 			503: {
 				Description: "Server unavailable",
-				Type:        localapi.HealthResponse{},
+				Type:        localtypes.HealthResponse{},
 				Examples: map[string]any{
-					"Database Unavailable": localapi.HealthResponse{Database: false, MQTT: true},
-					"MQTT Unavailable":     localapi.HealthResponse{Database: true, MQTT: false},
-					"Both Unavailable":     localapi.HealthResponse{Database: false, MQTT: false},
+					"Database Unavailable": localtypes.HealthResponse{Database: false, MQTT: true},
+					"MQTT Unavailable":     localtypes.HealthResponse{Database: true, MQTT: false},
+					"Both Unavailable":     localtypes.HealthResponse{Database: false, MQTT: false},
 				},
 			},
 			500: {
 				Description: "Internal server error",
-				Type:        common.ErrorResponse{},
+				Type:        sharedtypes.ErrorResponse{},
 			},
 		}),
 	})

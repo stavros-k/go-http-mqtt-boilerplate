@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"http-mqtt-boilerplate/backend/pkg/router"
-	"http-mqtt-boilerplate/backend/pkg/types/common"
+	"http-mqtt-boilerplate/backend/internal/shared/types"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 )
 
@@ -25,16 +25,16 @@ const zeroUUID = "00000000-0000-0000-0000-000000000000"
 type HandlerFunc func(w http.ResponseWriter, r *http.Request) error
 
 // NewError creates a simple error response.
-func NewError(statusCode int, message string) *common.ErrorResponse {
-	return &common.ErrorResponse{
+func NewError(statusCode int, message string) *types.ErrorResponse {
+	return &types.ErrorResponse{
 		StatusCode: statusCode,
 		Message:    message,
 	}
 }
 
 // NewValidationError creates a validation error with field-level details.
-func NewValidationError(fieldErrors map[string]string) *common.ErrorResponse {
-	return &common.ErrorResponse{
+func NewValidationError(fieldErrors map[string]string) *types.ErrorResponse {
+	return &types.ErrorResponse{
 		StatusCode: http.StatusBadRequest,
 		Message:    "Validation failed",
 		Errors:     fieldErrors,
@@ -53,7 +53,7 @@ func ErrorHandler(fn HandlerFunc) http.HandlerFunc {
 		}
 
 		// This is an expected HTTP error, we return the actual error to the client
-		var httpErr *common.ErrorResponse
+		var httpErr *types.ErrorResponse
 		if errors.As(err, &httpErr) {
 			httpErr.RequestID = requestID
 			l.Warn("handler returned HTTP error", "status", httpErr.StatusCode, "message", httpErr.Message)
@@ -64,7 +64,7 @@ func ErrorHandler(fn HandlerFunc) http.HandlerFunc {
 
 		// Internal errors get logged with full context, but we return a generic message to the client
 		l.Error("internal error", utils.ErrAttr(err))
-		RespondJSON(w, r, http.StatusInternalServerError, &common.ErrorResponse{
+		RespondJSON(w, r, http.StatusInternalServerError, &types.ErrorResponse{
 			RequestID: requestID,
 			Message:   "Internal Server Error",
 		})
@@ -145,9 +145,9 @@ func GenerateResponses(responses map[int]router.ResponseSpec) map[int]router.Res
 	if _, exists := responses[http.StatusRequestEntityTooLarge]; !exists {
 		responses[http.StatusRequestEntityTooLarge] = router.ResponseSpec{
 			Description: "Request entity too large",
-			Type:        common.ErrorResponse{},
+			Type:        types.ErrorResponse{},
 			Examples: map[string]any{
-				"Request Entity Too Large": common.ErrorResponse{
+				"Request Entity Too Large": types.ErrorResponse{
 					RequestID: zeroUUID,
 					Message:   "Request body too large (max " + MaxBodyText + ")",
 				},
@@ -158,9 +158,9 @@ func GenerateResponses(responses map[int]router.ResponseSpec) map[int]router.Res
 	if _, exists := responses[http.StatusInternalServerError]; !exists {
 		responses[http.StatusInternalServerError] = router.ResponseSpec{
 			Description: "Internal Server Error",
-			Type:        common.ErrorResponse{},
+			Type:        types.ErrorResponse{},
 			Examples: map[string]any{
-				"Internal Server Error": common.ErrorResponse{
+				"Internal Server Error": types.ErrorResponse{
 					RequestID: zeroUUID,
 					Message:   "Internal Server Error",
 				},

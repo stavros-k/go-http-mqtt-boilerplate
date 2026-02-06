@@ -1,4 +1,4 @@
-package localapi
+package api
 
 import (
 	"net/http"
@@ -6,17 +6,17 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"http-mqtt-boilerplate/backend/internal/shared/api"
-	"http-mqtt-boilerplate/backend/pkg/types/localapi"
+	localtypes "http-mqtt-boilerplate/backend/internal/local/api/types"
+	apitypes "http-mqtt-boilerplate/backend/internal/shared/api"
+	sharedtypes "http-mqtt-boilerplate/backend/internal/shared/types"
 	"http-mqtt-boilerplate/backend/pkg/router"
-	"http-mqtt-boilerplate/backend/pkg/types"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 )
 
 func (h *Handler) GetTeam(w http.ResponseWriter, r *http.Request) error {
 	teamID := chi.URLParam(r, "teamID")
 
-	apicommon.RespondJSON(w, r, http.StatusOK, localapi.GetTeamResponse{TeamID: teamID, Users: []localapi.User{{UserID: "Asdf"}}})
+	apitypes.RespondJSON(w, r, http.StatusOK, localtypes.GetTeamResponse{TeamID: teamID, Users: []localtypes.User{{UserID: "Asdf"}}})
 
 	return nil
 }
@@ -28,7 +28,7 @@ func (h *Handler) RegisterGetTeam(path string, rb *router.RouteBuilder) {
 		Description: "Get a team by its ID",
 		Group:       TeamGroup,
 		Deprecated:  "Use GetTeamResponseV2 instead.",
-		Handler:     apicommon.ErrorHandler(h.GetTeam),
+		Handler:     apitypes.ErrorHandler(h.GetTeam),
 		RequestType: nil,
 		Parameters: map[string]router.ParameterSpec{
 			"teamID": {
@@ -38,26 +38,26 @@ func (h *Handler) RegisterGetTeam(path string, rb *router.RouteBuilder) {
 				Type:        new(string),
 			},
 		},
-		Responses: apicommon.GenerateResponses(map[int]router.ResponseSpec{
+		Responses: apitypes.GenerateResponses(map[int]router.ResponseSpec{
 			200: {
 				Description: "Successful ping response",
-				Type:        localapi.PingResponse{},
+				Type:        sharedtypes.PingResponse{},
 				Examples: map[string]any{
-					"example-1": localapi.PingResponse{Message: "Pong", Status: localapi.PingStatusOK},
+					"example-1": sharedtypes.PingResponse{Message: "Pong", Status: sharedtypes.PingStatusOK},
 				},
 			},
 			201: {
 				Description: "Successful ping response",
-				Type:        localapi.GetTeamResponse{},
+				Type:        localtypes.GetTeamResponse{},
 				Examples: map[string]any{
-					"example-1": localapi.GetTeamResponse{TeamID: "123", Users: []localapi.User{{UserID: "123", Name: "John"}}},
+					"example-1": localtypes.GetTeamResponse{TeamID: "123", Users: []localtypes.User{{UserID: "123", Name: "John"}}},
 				},
 			},
 			400: {
 				Description: "Invalid request",
-				Type:        localapi.CreateUserResponse{},
+				Type:        localtypes.CreateUserResponse{},
 				Examples: map[string]any{
-					"example-1": localapi.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}},
+					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}},
 				},
 			},
 		}),
@@ -65,7 +65,7 @@ func (h *Handler) RegisterGetTeam(path string, rb *router.RouteBuilder) {
 }
 
 func (h *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) error {
-	apicommon.RespondJSON(w, r, http.StatusOK, localapi.PingResponse{Message: "Pong", Status: localapi.PingStatusOK})
+	apitypes.RespondJSON(w, r, http.StatusOK, sharedtypes.PingResponse{Message: "Pong", Status: sharedtypes.PingStatusOK})
 
 	return nil
 }
@@ -76,26 +76,26 @@ func (h *Handler) RegisterCreateTeam(path string, rb *router.RouteBuilder) {
 		Summary:     "Create a team",
 		Description: "Create a team by its name",
 		Group:       TeamGroup,
-		Handler:     apicommon.ErrorHandler(h.CreateTeam),
+		Handler:     apitypes.ErrorHandler(h.CreateTeam),
 		RequestType: &router.RequestBodySpec{
-			Type: localapi.CreateTeamRequest{Name: "My Team"},
+			Type: localtypes.CreateTeamRequest{Name: "My Team"},
 			Examples: map[string]any{
-				"example-1": localapi.CreateTeamRequest{Name: "My Team"},
+				"example-1": localtypes.CreateTeamRequest{Name: "My Team"},
 			},
 		},
-		Responses: apicommon.GenerateResponses(map[int]router.ResponseSpec{
+		Responses: apitypes.GenerateResponses(map[int]router.ResponseSpec{
 			200: {
 				Description: "Successful ping response",
-				Type:        localapi.PingResponse{},
+				Type:        sharedtypes.PingResponse{},
 				Examples: map[string]any{
-					"example-1": localapi.PingResponse{Message: "Pong", Status: localapi.PingStatusOK},
+					"example-1": sharedtypes.PingResponse{Message: "Pong", Status: sharedtypes.PingStatusOK},
 				},
 			},
 			400: {
 				Description: "Invalid request",
-				Type:        localapi.CreateUserResponse{},
+				Type:        localtypes.CreateUserResponse{},
 				Examples: map[string]any{
-					"example-1": localapi.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: utils.Ptr(types.MustNewURL("https://localhost:8080/user"))},
+					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: utils.Ptr(utils.MustNewURL("https://localhost:8080/user"))},
 				},
 			},
 		}),
@@ -103,7 +103,7 @@ func (h *Handler) RegisterCreateTeam(path string, rb *router.RouteBuilder) {
 }
 
 func (h *Handler) DeleteTeam(w http.ResponseWriter, r *http.Request) error {
-	apicommon.RespondJSON(w, r, http.StatusOK, localapi.PingResponse{Message: "Pong", Status: localapi.PingStatusOK})
+	apitypes.RespondJSON(w, r, http.StatusOK, sharedtypes.PingResponse{Message: "Pong", Status: sharedtypes.PingStatusOK})
 
 	return nil
 }
@@ -114,26 +114,26 @@ func (h *Handler) RegisterDeleteTeam(path string, rb *router.RouteBuilder) {
 		Summary:     "Create a team",
 		Description: "Create a team by its name",
 		Group:       TeamGroup,
-		Handler:     apicommon.ErrorHandler(h.DeleteTeam),
+		Handler:     apitypes.ErrorHandler(h.DeleteTeam),
 		RequestType: &router.RequestBodySpec{
-			Type: localapi.CreateTeamRequest{Name: "My Team"},
+			Type: localtypes.CreateTeamRequest{Name: "My Team"},
 			Examples: map[string]any{
-				"example-1": localapi.CreateTeamRequest{Name: "My Team"},
+				"example-1": localtypes.CreateTeamRequest{Name: "My Team"},
 			},
 		},
-		Responses: apicommon.GenerateResponses(map[int]router.ResponseSpec{
+		Responses: apitypes.GenerateResponses(map[int]router.ResponseSpec{
 			200: {
 				Description: "Successful ping response",
-				Type:        localapi.PingResponse{},
+				Type:        sharedtypes.PingResponse{},
 				Examples: map[string]any{
-					"example-1": localapi.PingResponse{Message: "Pong", Status: localapi.PingStatusOK},
+					"example-1": sharedtypes.PingResponse{Message: "Pong", Status: sharedtypes.PingStatusOK},
 				},
 			},
 			400: {
 				Description: "Invalid request",
-				Type:        localapi.CreateUserResponse{},
+				Type:        localtypes.CreateUserResponse{},
 				Examples: map[string]any{
-					"example-1": localapi.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: utils.Ptr(types.MustNewURL("https://localhost:8080/user"))},
+					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: utils.Ptr(utils.MustNewURL("https://localhost:8080/user"))},
 				},
 			},
 		}),
@@ -141,7 +141,7 @@ func (h *Handler) RegisterDeleteTeam(path string, rb *router.RouteBuilder) {
 }
 
 func (h *Handler) PutTeam(w http.ResponseWriter, r *http.Request) error {
-	apicommon.RespondJSON(w, r, http.StatusOK, localapi.PingResponse{Message: "Pong", Status: localapi.PingStatusOK})
+	apitypes.RespondJSON(w, r, http.StatusOK, sharedtypes.PingResponse{Message: "Pong", Status: sharedtypes.PingStatusOK})
 
 	return nil
 }
@@ -152,26 +152,26 @@ func (h *Handler) RegisterPutTeam(path string, rb *router.RouteBuilder) {
 		Summary:     "Create a team",
 		Description: "Create a team by its name",
 		Group:       TeamGroup,
-		Handler:     apicommon.ErrorHandler(h.PutTeam),
+		Handler:     apitypes.ErrorHandler(h.PutTeam),
 		RequestType: &router.RequestBodySpec{
-			Type: localapi.CreateTeamRequest{Name: "My Team"},
+			Type: localtypes.CreateTeamRequest{Name: "My Team"},
 			Examples: map[string]any{
-				"example-1": localapi.CreateTeamRequest{Name: "My Team"},
+				"example-1": localtypes.CreateTeamRequest{Name: "My Team"},
 			},
 		},
-		Responses: apicommon.GenerateResponses(map[int]router.ResponseSpec{
+		Responses: apitypes.GenerateResponses(map[int]router.ResponseSpec{
 			200: {
 				Description: "Successful ping response",
-				Type:        localapi.PingResponse{},
+				Type:        sharedtypes.PingResponse{},
 				Examples: map[string]any{
-					"example-1": localapi.PingResponse{Message: "Pong", Status: localapi.PingStatusOK},
+					"example-1": sharedtypes.PingResponse{Message: "Pong", Status: sharedtypes.PingStatusOK},
 				},
 			},
 			400: {
 				Description: "Invalid request",
-				Type:        localapi.CreateUserResponse{},
+				Type:        localtypes.CreateUserResponse{},
 				Examples: map[string]any{
-					"example-1": localapi.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: utils.Ptr(types.MustNewURL("https://localhost:8080/user"))},
+					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: utils.Ptr(utils.MustNewURL("https://localhost:8080/user"))},
 				},
 			},
 		}),

@@ -59,7 +59,7 @@ components:
 info:
     description: Cloud API Documentation
     title: Cloud API
-    version: vdev (bb1437f-dirty)
+    version: vdev (unknown)
 openapi: 3.0.3
 paths:
     /api/health:

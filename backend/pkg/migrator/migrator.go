@@ -2,7 +2,7 @@ package migrator
 
 import (
 	"embed"
-	"fmt"
+	"errors"
 	"log/slog"
 )
 
@@ -18,7 +18,7 @@ type Migrator interface {
 //nolint:ireturn // Returns Migrator interface
 func New(l *slog.Logger, connString string, fs embed.FS, migrationDirs ...string) (Migrator, error) {
 	if len(migrationDirs) == 0 {
-		return nil, fmt.Errorf("at least one migration directory is required")
+		return nil, errors.New("at least one migration directory is required")
 	}
 
 	return newPostgresMigrator(l, connString, fs, migrationDirs...)

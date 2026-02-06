@@ -1,9 +1,8 @@
-package types
+package utils
 
 import (
 	"bytes"
 	"fmt"
-	"http-mqtt-boilerplate/backend/pkg/utils"
 	"net/url"
 )
 
@@ -38,10 +37,10 @@ func MustNewURL(s string) URL {
 // Value receiver ensures this works for non-addressable values (map values, interface{}, etc).
 func (u URL) MarshalJSON() ([]byte, error) {
 	if u.URL == nil {
-		return utils.ToJSON("")
+		return ToJSON("")
 	}
 
-	return utils.ToJSON(u.String())
+	return ToJSON(u.String())
 }
 
 // UnmarshalJSON unmarshals a JSON string into a URL.
@@ -53,7 +52,7 @@ func (u *URL) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	s, err := utils.FromJSON[string](data)
+	s, err := FromJSON[string](data)
 	if err != nil {
 		return err
 	}

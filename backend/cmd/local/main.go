@@ -47,7 +47,11 @@ func main() {
 		fatalIfErr(slog.Default(), fmt.Errorf("failed to create config: %w", err))
 	}
 
-	defer utils.LogOnError(slog.Default(), config.Close, "failed to close config")
+	defer func() {
+		if err := config.Close(); err != nil {
+			slog.Default().Error("failed to close config", utils.ErrAttr(err))
+		}
+	}()
 
 	// Initialize logger
 	logger := getLogger(config)
@@ -247,12 +251,13 @@ func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector,
 
 	return generate.NewOpenAPICollector(l, generate.OpenAPICollectorOptions{
 		GoTypesDirPaths: []string{
-			"backend/pkg/types/common",   // Common types (ErrorResponse, etc.)
-			"backend/pkg/types/localapi", // Local-specific types (including IoT types)
+			"backend/internal/shared/types",     // Shared types (ErrorResponse, PingResponse, etc.)
+			"backend/internal/local/api/types",  // Local API types
+			"backend/internal/local/mqtt/types", // Local MQTT/IoT types
 		},
-		DatabaseSchemaFileOutputPath: "api_local/schema.sql",
-		DocsFileOutputPath:           "api_local/api_docs.json",
-		OpenAPISpecOutputPath:        "api_local/openapi.yaml",
+		DatabaseSchemaFileOutputPath: "docs/local/schema.sql",
+		DocsFileOutputPath:           "docs/local/api_docs.json",
+		OpenAPISpecOutputPath:        "docs/local/openapi.yaml",
 		Deployment:                   "local",
 		APIInfo: generate.APIInfo{
 			Title:       "Local API",

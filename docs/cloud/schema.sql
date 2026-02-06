@@ -1,6 +1,6 @@
 \restrict dbmate
 
--- Dumped from database version 17.7
+-- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
 
 SET statement_timeout = 0;
@@ -18,6 +18,44 @@ SET row_security = off;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: api_key; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_key (
+    id integer NOT NULL,
+    key_hash text NOT NULL,
+    name text NOT NULL,
+    user_id integer NOT NULL,
+    permissions jsonb DEFAULT '[]'::jsonb NOT NULL,
+    last_used timestamp without time zone,
+    expires_at timestamp without time zone,
+    revoked boolean DEFAULT false NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: api_key_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.api_key_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: api_key_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.api_key_id_seq OWNED BY public.api_key.id;
+
 
 --
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
@@ -69,6 +107,7 @@ CREATE TABLE public."user" (
     name text NOT NULL,
     email text NOT NULL,
     password text NOT NULL,
+    last_login timestamp without time zone,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -95,6 +134,13 @@ ALTER SEQUENCE public.user_id_seq OWNED BY public."user".id;
 
 
 --
+-- Name: api_key id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key ALTER COLUMN id SET DEFAULT nextval('public.api_key_id_seq'::regclass);
+
+
+--
 -- Name: some-table id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -106,6 +152,22 @@ ALTER TABLE ONLY public."some-table" ALTER COLUMN id SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public."user" ALTER COLUMN id SET DEFAULT nextval('public.user_id_seq'::regclass);
+
+
+--
+-- Name: api_key api_key_key_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key
+    ADD CONSTRAINT api_key_key_hash_key UNIQUE (key_hash);
+
+
+--
+-- Name: api_key api_key_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key
+    ADD CONSTRAINT api_key_pkey PRIMARY KEY (id);
 
 
 --
@@ -133,10 +195,46 @@ ALTER TABLE ONLY public."user"
 
 
 --
+-- Name: api_key_key_hash_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX api_key_key_hash_idx ON public.api_key USING btree (key_hash);
+
+
+--
+-- Name: api_key_revoked_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX api_key_revoked_idx ON public.api_key USING btree (revoked);
+
+
+--
+-- Name: api_key_user_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX api_key_user_id_idx ON public.api_key USING btree (user_id);
+
+
+--
+-- Name: user_email_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX user_email_idx ON public."user" USING btree (email);
+
+
+--
 -- Name: user_name_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX user_name_idx ON public."user" USING btree (name);
+
+
+--
+-- Name: api_key fk_api_key_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key
+    ADD CONSTRAINT fk_api_key_user FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -159,4 +257,5 @@ ALTER TABLE ONLY public."user"
 --
 
 INSERT INTO public.schema_migrations (version) VALUES
-    ('20251009092116');
+    ('20260206100000'),
+    ('20260207000001');

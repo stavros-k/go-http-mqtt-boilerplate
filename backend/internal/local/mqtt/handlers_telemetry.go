@@ -2,13 +2,14 @@ package mqtt
 
 import (
 	"encoding/json"
-	"http-mqtt-boilerplate/backend/pkg/types/localapi"
-	"http-mqtt-boilerplate/backend/pkg/mqtt"
-	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"time"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
+
+	"http-mqtt-boilerplate/backend/internal/local/mqtt/types"
+	"http-mqtt-boilerplate/backend/pkg/mqtt"
+	"http-mqtt-boilerplate/backend/pkg/utils"
 )
 
 // RegisterTemperaturePublish registers the temperature publication operation.
@@ -26,7 +27,7 @@ func (s *Handler) RegisterTemperaturePublish(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: localapi.TemperatureReading{
+		MessageType: types.TemperatureReading{
 			DeviceID:    "device-001",
 			Temperature: 22.5,
 			Unit:        "celsius",
@@ -35,13 +36,13 @@ func (s *Handler) RegisterTemperaturePublish(mb *mqtt.MQTTBuilder) {
 		QoS:      mqtt.QoSAtLeastOnce,
 		Retained: true,
 		Examples: map[string]any{
-			"normal": localapi.TemperatureReading{
+			"normal": types.TemperatureReading{
 				DeviceID:    "device-001",
 				Temperature: 22.5,
 				Unit:        "celsius",
 				Timestamp:   time.Time{},
 			},
-			"fahrenheit": localapi.TemperatureReading{
+			"fahrenheit": types.TemperatureReading{
 				DeviceID:    "device-002",
 				Temperature: 72.5,
 				Unit:        "fahrenheit",
@@ -65,7 +66,7 @@ func (s *Handler) RegisterTemperatureSubscribe(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: localapi.TemperatureReading{
+		MessageType: types.TemperatureReading{
 			DeviceID:    "device-001",
 			Temperature: 22.5,
 			Unit:        "celsius",
@@ -74,7 +75,7 @@ func (s *Handler) RegisterTemperatureSubscribe(mb *mqtt.MQTTBuilder) {
 		Handler: s.handleTemperature,
 		QoS:     mqtt.QoSAtLeastOnce,
 		Examples: map[string]any{
-			"normal": localapi.TemperatureReading{
+			"normal": types.TemperatureReading{
 				DeviceID:    "device-001",
 				Temperature: 22.5,
 				Unit:        "celsius",
@@ -86,7 +87,7 @@ func (s *Handler) RegisterTemperatureSubscribe(mb *mqtt.MQTTBuilder) {
 
 // handleTemperature handles incoming temperature readings.
 func (s *Handler) handleTemperature(client pahomqtt.Client, msg pahomqtt.Message) {
-	var reading localapi.TemperatureReading
+	var reading types.TemperatureReading
 	if err := json.Unmarshal(msg.Payload(), &reading); err != nil {
 		s.l.Error("Failed to unmarshal temperature reading", slog.String("topic", msg.Topic()), utils.ErrAttr(err))
 
@@ -118,7 +119,7 @@ func (s *Handler) RegisterSensorTelemetryPublish(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: localapi.SensorTelemetry{
+		MessageType: types.SensorTelemetry{
 			DeviceID:   "device-001",
 			SensorType: "humidity",
 			Value:      65.5,
@@ -129,7 +130,7 @@ func (s *Handler) RegisterSensorTelemetryPublish(mb *mqtt.MQTTBuilder) {
 		QoS:      mqtt.QoSAtLeastOnce,
 		Retained: false,
 		Examples: map[string]any{
-			"humidity": localapi.SensorTelemetry{
+			"humidity": types.SensorTelemetry{
 				DeviceID:   "device-001",
 				SensorType: "humidity",
 				Value:      65.5,
@@ -137,7 +138,7 @@ func (s *Handler) RegisterSensorTelemetryPublish(mb *mqtt.MQTTBuilder) {
 				Timestamp:  time.Time{},
 				Quality:    95,
 			},
-			"pressure": localapi.SensorTelemetry{
+			"pressure": types.SensorTelemetry{
 				DeviceID:   "device-001",
 				SensorType: "pressure",
 				Value:      1013.25,
@@ -168,7 +169,7 @@ func (s *Handler) RegisterSensorTelemetrySubscribe(mb *mqtt.MQTTBuilder) {
 				Type:        new(string),
 			},
 		},
-		MessageType: localapi.SensorTelemetry{
+		MessageType: types.SensorTelemetry{
 			DeviceID:   "device-001",
 			SensorType: "humidity",
 			Value:      65.5,
@@ -179,7 +180,7 @@ func (s *Handler) RegisterSensorTelemetrySubscribe(mb *mqtt.MQTTBuilder) {
 		Handler: s.handleSensorTelemetry,
 		QoS:     mqtt.QoSAtLeastOnce,
 		Examples: map[string]any{
-			"humidity": localapi.SensorTelemetry{
+			"humidity": types.SensorTelemetry{
 				DeviceID:   "device-001",
 				SensorType: "humidity",
 				Value:      65.5,
@@ -193,7 +194,7 @@ func (s *Handler) RegisterSensorTelemetrySubscribe(mb *mqtt.MQTTBuilder) {
 
 // handleSensorTelemetry handles incoming sensor telemetry data.
 func (s *Handler) handleSensorTelemetry(client pahomqtt.Client, msg pahomqtt.Message) {
-	var telemetry localapi.SensorTelemetry
+	var telemetry types.SensorTelemetry
 	if err := json.Unmarshal(msg.Payload(), &telemetry); err != nil {
 		s.l.Error("Failed to unmarshal sensor telemetry", slog.String("topic", msg.Topic()), utils.ErrAttr(err))
 

@@ -45,8 +45,11 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(deployment string, schemaOutpu
 	}
 
 	// Get migrations based on deployment
-	var mig migrator.Migrator
-	var migrationDirs []string
+	var (
+		mig           migrator.Migrator
+		migrationDirs []string
+	)
+
 	switch deployment {
 	case "local":
 		migrationDirs = []string{"shared/migrations", "local/migrations"}

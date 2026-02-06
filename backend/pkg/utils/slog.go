@@ -42,12 +42,3 @@ func SlogReplacer(groups []string, a slog.Attr) slog.Attr {
 
 	return a
 }
-
-func LogOnError(l *slog.Logger, fn func() error, msg string) {
-	err := fn()
-	if err == nil {
-		return
-	}
-
-	l.Error(msg, ErrAttr(err))
-}

@@ -41,7 +41,11 @@ func main() {
 		fatalIfErr(slog.Default(), fmt.Errorf("failed to create config: %w", err))
 	}
 
-	defer utils.LogOnError(slog.Default(), config.Close, "failed to close config")
+	defer func() {
+		if err := config.Close(); err != nil {
+			slog.Default().Error("failed to close config", utils.ErrAttr(err))
+		}
+	}()
 
 	// Initialize logger
 	logger := getLogger(config)
@@ -161,12 +165,12 @@ func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector,
 
 	return generate.NewOpenAPICollector(l, generate.OpenAPICollectorOptions{
 		GoTypesDirPaths: []string{
-			"backend/pkg/types/common",   // Common types (ErrorResponse, etc.)
-			"backend/pkg/types/cloudapi", // Cloud-specific types
+			"backend/internal/shared/types",    // Shared types (ErrorResponse, PingResponse, etc.)
+			"backend/internal/cloud/api/types", // Cloud API types
 		},
-		DatabaseSchemaFileOutputPath: "api_cloud/schema.sql",
-		DocsFileOutputPath:           "api_cloud/api_docs.json",
-		OpenAPISpecOutputPath:        "api_cloud/openapi.yaml",
+		DatabaseSchemaFileOutputPath: "docs/cloud/schema.sql",
+		DocsFileOutputPath:           "docs/cloud/api_docs.json",
+		OpenAPISpecOutputPath:        "docs/cloud/openapi.yaml",
 		Deployment:                   "cloud",
 		APIInfo: generate.APIInfo{
 			Title:       "Cloud API",

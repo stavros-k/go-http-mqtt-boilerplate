@@ -1,4 +1,4 @@
-package cloudapi
+package api
 
 import (
 	"log/slog"
