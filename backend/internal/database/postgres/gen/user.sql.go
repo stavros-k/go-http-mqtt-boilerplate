@@ -7,8 +7,8 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
-	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -35,9 +35,9 @@ type CreateUserParams struct {
 	Name      string
 	Email     string
 	Password  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	LastLogin sql.NullTime
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+	LastLogin pgtype.Timestamp
 }
 
 // CreateUser
@@ -60,7 +60,7 @@ type CreateUserParams struct {
 //	  )
 //	RETURNING id, name, email, password, created_at, updated_at, last_login
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+	row := q.db.QueryRow(ctx, createUser,
 		arg.Name,
 		arg.Email,
 		arg.Password,
@@ -105,9 +105,9 @@ type CreateUserWithPasswordParams struct {
 	Name      string
 	Email     string
 	Password  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	LastLogin sql.NullTime
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+	LastLogin pgtype.Timestamp
 }
 
 // CreateUserWithPassword
@@ -130,7 +130,7 @@ type CreateUserWithPasswordParams struct {
 //	  )
 //	RETURNING id, name, email, password, created_at, updated_at, last_login
 func (q *Queries) CreateUserWithPassword(ctx context.Context, arg CreateUserWithPasswordParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUserWithPassword,
+	row := q.db.QueryRow(ctx, createUserWithPassword,
 		arg.Name,
 		arg.Email,
 		arg.Password,

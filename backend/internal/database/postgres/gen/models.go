@@ -5,8 +5,7 @@
 package postgres
 
 import (
-	"database/sql"
-	"time"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type User struct {
@@ -14,7 +13,7 @@ type User struct {
 	Name      string
 	Email     string
 	Password  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	LastLogin sql.NullTime
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+	LastLogin pgtype.Timestamp
 }

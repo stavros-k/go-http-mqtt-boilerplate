@@ -32,7 +32,7 @@ func (d Dialect) Driver() string {
 	case SQLite:
 		return "sqlite3"
 	case PostgreSQL:
-		return "postgres"
+		return "pgx"
 	default:
 		return ""
 	}

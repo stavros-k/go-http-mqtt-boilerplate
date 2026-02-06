@@ -46,6 +46,7 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 		}
 
 	case dialect.PostgreSQL:
+		// FIXME: use testcontainers here.
 		// For PostgreSQL, use a test connection string from environment
 		tempDB = os.Getenv("POSTGRES_TEST_URL")
 		if tempDB == "" {

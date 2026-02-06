@@ -14,7 +14,7 @@ import (
 
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
 	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type postgresMigrator struct {
@@ -91,41 +91,46 @@ func (m *postgresMigrator) DumpSchema(filePath string) error {
 	return nil
 }
 
-// GetDatabaseStats connects to the PostgreSQL database and retrieves metadata about tables, columns, foreign keys, and indexes.
+// GetDatabaseStats queries the PostgreSQL database directly to retrieve metadata about tables, columns, foreign keys, and indexes.
 func (m *postgresMigrator) GetDatabaseStats() (dbstats.DatabaseStats, error) {
-	m.l.Debug("Getting database stats")
+	m.l.Debug("Getting database stats from PostgreSQL")
 
-	ctx := context.Background()
-
-	// Open a connection to PostgreSQL using the internal connection string
-	// This connects to the same database that was migrated
-	db, err := sql.Open("postgres", m.connStr)
+	// Open a connection to PostgreSQL using the internal connection string (use pgx driver)
+	db, err := sql.Open("pgx", m.connStr)
 	if err != nil {
 		return dbstats.DatabaseStats{}, fmt.Errorf("failed to open database: %w", err)
 	}
-	defer utils.LogOnError(m.l, db.Close, "failed to close database")
 
-	// Query the public schema (default schema where migrations ran)
-	schemaName := "public"
+	defer func() {
+		if err := db.Close(); err != nil {
+			m.l.Error("failed to close database", utils.ErrAttr(err))
+		}
+	}()
 
+	ctx := context.Background()
+	schemaName := "public" // Default schema where migrations run
+
+	// Get all table names
 	tableNames, err := m.getTableNames(ctx, db, schemaName)
 	if err != nil {
 		return dbstats.DatabaseStats{}, err
 	}
 
+	// Get metadata for each table
 	var tables []dbstats.Table
-	for _, name := range tableNames {
-		table, err := m.getTableMetadata(ctx, db, schemaName, name)
+
+	for _, tableName := range tableNames {
+		table, err := m.getTableMetadata(ctx, db, schemaName, tableName)
 		if err != nil {
 			return dbstats.DatabaseStats{}, err
 		}
+
 		tables = append(tables, table)
 	}
 
 	return dbstats.DatabaseStats{Tables: tables}, nil
 }
 
-// getTableNames retrieves all table names from the PostgreSQL schema.
 func (m *postgresMigrator) getTableNames(ctx context.Context, db *sql.DB, schemaName string) ([]string, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT table_name
@@ -137,59 +142,69 @@ func (m *postgresMigrator) getTableNames(ctx context.Context, db *sql.DB, schema
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tables: %w", err)
 	}
+
 	defer func() {
-		utils.LogOnError(m.l, rows.Close, "failed to close rows for tables query")
+		if err := rows.Err(); err != nil {
+			m.l.Error("failed to iterate tables", utils.ErrAttr(err))
+		}
 	}()
 
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("failed to iterate tables: %w", rows.Err())
+	}
+
 	var tableNames []string
+
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
 			return nil, fmt.Errorf("failed to scan table name: %w", err)
 		}
+
 		tableNames = append(tableNames, name)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate tables: %w", err)
+		return nil, fmt.Errorf("error iterating table names: %w", err)
 	}
 
 	return tableNames, nil
 }
 
-// getTableMetadata retrieves all metadata for a specific table.
 func (m *postgresMigrator) getTableMetadata(ctx context.Context, db *sql.DB, schemaName, tableName string) (dbstats.Table, error) {
-	t := dbstats.Table{Name: tableName}
+	table := dbstats.Table{Name: tableName}
 
 	columns, err := m.getTableColumns(ctx, db, schemaName, tableName)
 	if err != nil {
 		return dbstats.Table{}, err
 	}
-	t.Columns = columns
+
+	table.Columns = columns
 
 	foreignKeys, err := m.getTableForeignKeys(ctx, db, schemaName, tableName)
 	if err != nil {
 		return dbstats.Table{}, err
 	}
-	t.ForeignKeys = foreignKeys
+
+	table.ForeignKeys = foreignKeys
 
 	indexes, err := m.getTableIndexes(ctx, db, schemaName, tableName)
 	if err != nil {
 		return dbstats.Table{}, err
 	}
-	t.Indexes = indexes
 
-	return t, nil
+	table.Indexes = indexes
+
+	return table, nil
 }
 
-// getTableColumns retrieves all columns for a specific table.
 func (m *postgresMigrator) getTableColumns(ctx context.Context, db *sql.DB, schemaName, tableName string) ([]dbstats.Column, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT
-			column_name,
-			data_type,
-			is_nullable,
-			column_default,
+			c.column_name,
+			c.data_type,
+			c.is_nullable,
+			c.column_default,
 			CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END as is_primary
 		FROM information_schema.columns c
 		LEFT JOIN (
@@ -209,11 +224,19 @@ func (m *postgresMigrator) getTableColumns(ctx context.Context, db *sql.DB, sche
 	if err != nil {
 		return nil, fmt.Errorf("failed to query columns for %s: %w", tableName, err)
 	}
+
 	defer func() {
-		utils.LogOnError(m.l, rows.Close, "failed to close column rows for table "+tableName)
+		if err := rows.Close(); err != nil {
+			m.l.Error("failed to close columns rows", utils.ErrAttr(err))
+		}
 	}()
 
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("failed to iterate columns for %s: %w", tableName, rows.Err())
+	}
+
 	var columns []dbstats.Column
+
 	for rows.Next() {
 		var (
 			c          dbstats.Column
@@ -234,13 +257,12 @@ func (m *postgresMigrator) getTableColumns(ctx context.Context, db *sql.DB, sche
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate columns for %s: %w", tableName, err)
+		return nil, fmt.Errorf("error iterating columns for %s: %w", tableName, err)
 	}
 
 	return columns, nil
 }
 
-// getTableForeignKeys retrieves all foreign keys for a specific table.
 func (m *postgresMigrator) getTableForeignKeys(ctx context.Context, db *sql.DB, schemaName, tableName string) ([]dbstats.ForeignKey, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT
@@ -261,27 +283,35 @@ func (m *postgresMigrator) getTableForeignKeys(ctx context.Context, db *sql.DB, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query foreign keys for %s: %w", tableName, err)
 	}
+
 	defer func() {
-		utils.LogOnError(m.l, rows.Close, "failed to close foreign key rows for table "+tableName)
+		if err := rows.Close(); err != nil {
+			m.l.Error("failed to close foreign keys rows", utils.ErrAttr(err))
+		}
 	}()
 
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("failed to iterate foreign keys for %s: %w", tableName, rows.Err())
+	}
+
 	var foreignKeys []dbstats.ForeignKey
+
 	for rows.Next() {
 		var fk dbstats.ForeignKey
 		if err := rows.Scan(&fk.From, &fk.Table, &fk.To); err != nil {
 			return nil, fmt.Errorf("failed to scan foreign key: %w", err)
 		}
+
 		foreignKeys = append(foreignKeys, fk)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate foreign keys for %s: %w", tableName, err)
+		return nil, fmt.Errorf("error iterating foreign keys for %s: %w", tableName, err)
 	}
 
 	return foreignKeys, nil
 }
 
-// getTableIndexes retrieves all indexes for a specific table.
 func (m *postgresMigrator) getTableIndexes(ctx context.Context, db *sql.DB, schemaName, tableName string) ([]dbstats.Index, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT
@@ -302,11 +332,19 @@ func (m *postgresMigrator) getTableIndexes(ctx context.Context, db *sql.DB, sche
 	if err != nil {
 		return nil, fmt.Errorf("failed to query indexes for %s: %w", tableName, err)
 	}
+
 	defer func() {
-		utils.LogOnError(m.l, rows.Close, "failed to close index rows for table "+tableName)
+		if err := rows.Close(); err != nil {
+			m.l.Error("failed to close indexes rows", utils.ErrAttr(err))
+		}
 	}()
 
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("failed to iterate indexes for %s: %w", tableName, rows.Err())
+	}
+
 	var indexes []dbstats.Index
+
 	for rows.Next() {
 		var (
 			idx  dbstats.Index
@@ -322,7 +360,7 @@ func (m *postgresMigrator) getTableIndexes(ctx context.Context, db *sql.DB, sche
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate indexes for %s: %w", tableName, err)
+		return nil, fmt.Errorf("error iterating indexes for %s: %w", tableName, err)
 	}
 
 	return indexes, nil
