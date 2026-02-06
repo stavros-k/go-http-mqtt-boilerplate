@@ -104,7 +104,7 @@ func New(dbDialect dialect.Dialect) (*Config, error) {
 			url.QueryEscape(user),
 			url.QueryEscape(password),
 			net.JoinHostPort(host, strconv.Itoa(port)),
-			dbName, sslmode,
+			url.PathEscape(dbName), url.QueryEscape(sslmode),
 		)
 	default:
 		return nil, fmt.Errorf("unsupported dialect: %s", dbDialect)

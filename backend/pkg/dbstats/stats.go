@@ -5,6 +5,10 @@ type DatabaseStats struct {
 }
 
 func (d *DatabaseStats) NonNil() {
+	if d.Tables == nil {
+		d.Tables = []Table{}
+	}
+
 	for i := range d.Tables {
 		d.Tables[i].NonNil()
 	}
