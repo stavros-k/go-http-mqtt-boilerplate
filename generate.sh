@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+mkdir -p data
 component="$1"
 if [ "$component" == "local" ]; then
   echo "Component is local"
