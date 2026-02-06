@@ -6,12 +6,12 @@ component="$1"
 if [ "$component" == "local" ]; then
   echo "Component is local"
   OUTPUT_BINARY=./data/local
-  JSON_DOCS_FILE=./api_local/api_docs.json
+  JSON_DOCS_FILE=./docs/local/api_docs.json
 
 elif [ "$component" == "cloud" ]; then
   echo "Component is cloud"
   OUTPUT_BINARY=./data/cloud
-  JSON_DOCS_FILE=./api_cloud/api_docs.json
+  JSON_DOCS_FILE=./docs/cloud/api_docs.json
 
 else
   echo "Usage: $0 [local|cloud]"
