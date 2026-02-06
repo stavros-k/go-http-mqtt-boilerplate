@@ -1,5 +1,5 @@
 # TODO
 
-- [ ] Have MQTT retry connection without blocking the api server
-- [ ] Ping service should also check if mqtt is connected
-- [ ] Make sure mqtt does not block
+- [ ] Separate services and types for cloud and local API
+- [ ] Shared types for cloud and local API (those should be included in both APIs in the generator)
+- [ ] On cloudapi dont connect to the db before the gen collector is run.
