@@ -47,7 +47,7 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 		tempDB = tempDBFile.Name()
 		cleanup = func() {
 			if err := os.Remove(tempDBFile.Name()); err != nil {
-				g.l.Error("failed to remove temporary database file", slog.String("file", tempDBFile.Name()))
+				g.l.Error("failed to remove temporary database file", slog.String("file", tempDBFile.Name()), utils.ErrAttr(err))
 			}
 		}
 

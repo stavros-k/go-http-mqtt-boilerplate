@@ -46,7 +46,7 @@ export type Representations = {
 // TypeInfo contains comprehensive metadata about a Go type
 export type TypeInfo = {
     name: string;
-    kind: "object" | "alias" | "enum";
+    kind: "object" | "alias" | "enum" | "string_enum" | "number_enum";
     description: string;
     deprecated: string;
     fields?: FieldInfo[];
