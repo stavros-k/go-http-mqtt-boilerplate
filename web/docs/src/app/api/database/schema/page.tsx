@@ -9,7 +9,7 @@ export async function generateMetadata() {
 }
 
 export default function DatabaseSchema() {
-    const tables = docs.database.stats?.tables || [];
+    const tables = docs.database.stats.tables || [];
 
     return (
         <div className='flex-1 overflow-y-auto p-10'>
