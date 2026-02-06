@@ -5,6 +5,7 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"io"
 	"log/slog"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -104,10 +105,11 @@ func New() (*Config, error) {
 		sslmode := getStringEnv(EnvDBSSLMode, "disable")
 
 		dbConnString = fmt.Sprintf(
-			"postgresql://%s:%s@%s:%d/%s?sslmode=%s",
+			"postgresql://%s:%s@%s/%s?sslmode=%s",
 			url.QueryEscape(user),
 			url.QueryEscape(password),
-			host, port, dbName, sslmode,
+			net.JoinHostPort(host, strconv.Itoa(port)),
+			dbName, sslmode,
 		)
 	default:
 		return nil, fmt.Errorf("unsupported dialect: %s", dbDialect)

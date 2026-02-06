@@ -139,10 +139,6 @@ func (m *postgresMigrator) getTableNames(ctx context.Context, db *sql.DB, schema
 		}
 	}()
 
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("failed to iterate tables: %w", rows.Err())
-	}
-
 	var tableNames []string
 
 	for rows.Next() {
@@ -221,10 +217,6 @@ func (m *postgresMigrator) getTableColumns(ctx context.Context, db *sql.DB, sche
 		}
 	}()
 
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("failed to iterate columns for %s: %w", tableName, rows.Err())
-	}
-
 	var columns []dbstats.Column
 
 	for rows.Next() {
@@ -280,10 +272,6 @@ func (m *postgresMigrator) getTableForeignKeys(ctx context.Context, db *sql.DB, 
 		}
 	}()
 
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("failed to iterate foreign keys for %s: %w", tableName, rows.Err())
-	}
-
 	var foreignKeys []dbstats.ForeignKey
 
 	for rows.Next() {
@@ -328,10 +316,6 @@ func (m *postgresMigrator) getTableIndexes(ctx context.Context, db *sql.DB, sche
 			m.l.Error("failed to close indexes rows", utils.ErrAttr(err))
 		}
 	}()
-
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("failed to iterate indexes for %s: %w", tableName, rows.Err())
-	}
 
 	var indexes []dbstats.Index
 
