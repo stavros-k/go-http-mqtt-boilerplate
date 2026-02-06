@@ -1,0 +1,153 @@
+components:
+    schemas:
+        ErrorResponse:
+            additionalProperties: false
+            description: ErrorResponse is the unified error response type. It supports both simple errors (just message) and validation errors (message + field errors).
+            properties:
+                errors:
+                    additionalProperties:
+                        type: string
+                    description: Field-level validation errors
+                    type: object
+                message:
+                    description: High-level error message
+                    type: string
+                requestID:
+                    description: Request ID for tracking
+                    type: string
+            required:
+                - requestID
+                - message
+            type: object
+        HealthResponse:
+            additionalProperties: false
+            description: HealthResponse is the response to a health check request.
+            properties:
+                database:
+                    description: Status of the database connection
+                    type: boolean
+            required:
+                - database
+            type: object
+        PingResponse:
+            additionalProperties: false
+            description: PingResponse is the response to a ping request.
+            properties:
+                message:
+                    description: Human-readable message
+                    type: string
+                metadata:
+                    nullable: true
+                    type: string
+                status:
+                    $ref: '#/components/schemas/PingStatus'
+            required:
+                - message
+                - status
+            type: object
+        PingStatus:
+            description: |
+                PingStatus represents the status of a ping request.
+
+                Possible values:
+                - `OK`: PingStatusOK means the ping was successful.
+                - `ERROR`: PingStatusError means there was an error with the ping.
+            enum:
+                - OK
+                - ERROR
+            type: string
+info:
+    description: Cloud API Documentation
+    title: Cloud API
+    version: vdev (bb1437f-dirty)
+openapi: 3.0.3
+paths:
+    /api/health:
+        get:
+            description: Check if the server is healthy
+            operationId: health
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            examples:
+                                Success:
+                                    value:
+                                        database: true
+                            schema:
+                                $ref: '#/components/schemas/HealthResponse'
+                    description: Successful health response
+                "413":
+                    content:
+                        application/json:
+                            examples:
+                                Request Entity Too Large:
+                                    value:
+                                        message: Request body too large (max 1MB)
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Request entity too large
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Internal server error
+                "503":
+                    content:
+                        application/json:
+                            examples:
+                                Database Unavailable:
+                                    value:
+                                        database: false
+                            schema:
+                                $ref: '#/components/schemas/HealthResponse'
+                    description: Server unavailable
+            summary: Check server health
+            tags:
+                - Core
+    /api/ping:
+        get:
+            description: Check if the server is alive
+            operationId: ping
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            examples:
+                                Success:
+                                    value:
+                                        message: Pong
+                                        status: OK
+                            schema:
+                                $ref: '#/components/schemas/PingResponse'
+                    description: Successful ping response
+                "413":
+                    content:
+                        application/json:
+                            examples:
+                                Request Entity Too Large:
+                                    value:
+                                        message: Request body too large (max 1MB)
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Request entity too large
+                "500":
+                    content:
+                        application/json:
+                            examples:
+                                Internal Server Error:
+                                    value:
+                                        message: Internal Server Error
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Internal Server Error
+            summary: Ping the server
+            tags:
+                - Core
+servers:
+    - description: Local server
+      url: http://localhost:8080

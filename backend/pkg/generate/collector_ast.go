@@ -21,54 +21,77 @@ import (
 
 const DEPRECATED_PREFIX = "deprecated:"
 
-// parseGoTypesDir parses Go type definitions from a directory using go/packages.
-func (g *OpenAPICollector) parseGoTypesDir(goTypesDirPath string) (*GoParser, error) {
-	g.l.Debug("Parsing Go types directory", slog.String("path", goTypesDirPath))
+// parseGoTypesDirs parses Go type definitions from multiple directories using go/packages.
+// All packages are loaded together so they can reference each other properly.
+func (g *OpenAPICollector) parseGoTypesDirs(goTypesDirPaths []string) (*GoParser, error) {
+	g.l.Debug("Parsing Go types directories", slog.Any("paths", goTypesDirPaths))
 
-	if _, err := os.Stat(goTypesDirPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("failed to parse Go types directory: path %s does not exist", goTypesDirPath)
+	// Validate all paths exist
+	for _, path := range goTypesDirPaths {
+		if _, err := os.Stat(path); err != nil {
+			if !os.IsNotExist(err) {
+				return nil, fmt.Errorf("failed to parse Go types directory: path %s does not exist", path)
+			}
+
+			return nil, fmt.Errorf("failed to parse Go types directory: path %s does not exist", path)
+		}
 	}
 
-	// Use go/packages to load and type-check the package
+	// Use a shared file set for all packages
+	fset := token.NewFileSet()
+
+	// Use go/packages to load and type-check all packages
+	// We load them all at once so they can properly reference each other
 	cfg := &packages.Config{
+		Fset: fset, // Use our shared file set
 		Mode: packages.NeedName |
 			packages.NeedFiles |
 			packages.NeedSyntax |
 			packages.NeedTypes |
 			packages.NeedTypesInfo |
 			packages.NeedImports,
-		Dir: goTypesDirPath,
 	}
 
-	pkgs, err := packages.Load(cfg, ".")
+	pkgs, err := packages.Load(cfg, goTypesDirPaths...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load package from directory %s: %w", goTypesDirPath, err)
+		return nil, fmt.Errorf("failed to load packages from directories: %w", err)
 	}
 
 	if len(pkgs) == 0 {
-		return nil, fmt.Errorf("no packages found in directory: %s", goTypesDirPath)
+		return nil, fmt.Errorf("no packages found in directories: %v", goTypesDirPaths)
 	}
 
-	pkg := pkgs[0]
+	// Collect all files from all packages and check for errors
+	var allFiles []*ast.File
 
-	// Fail if there are any errors in the loaded package
-	if len(pkg.Errors) > 0 {
-		var errMsgs []string
-		for _, e := range pkg.Errors {
-			errMsgs = append(errMsgs, e.Error())
+	for _, pkg := range pkgs {
+		// Fail if there are any errors in the loaded package
+		if len(pkg.Errors) > 0 {
+			var errMsgs []string
+			for _, e := range pkg.Errors {
+				errMsgs = append(errMsgs, e.Error())
+			}
+
+			return nil, fmt.Errorf("package %s loading failed with errors: %s", pkg.Name, strings.Join(errMsgs, "; "))
 		}
 
-		return nil, fmt.Errorf("package %s loading failed from directory %s with errors: %s", pkg.Name, goTypesDirPath, strings.Join(errMsgs, "; "))
+		g.l.Debug("Loaded package",
+			slog.String("package", pkg.Name),
+			slog.Int("fileCount", len(pkg.Syntax)))
+
+		// Add all AST files from this package
+		allFiles = append(allFiles, pkg.Syntax...)
 	}
 
 	g.l.Debug("Go types parsed successfully",
-		slog.String("package", pkg.Name),
-		slog.Int("fileCount", len(pkg.Syntax)))
+		slog.Int("packageCount", len(pkgs)),
+		slog.Int("totalFileCount", len(allFiles)))
 
+	// Return a GoParser with all files from all packages
 	return &GoParser{
-		fset:  pkg.Fset,
-		files: pkg.Syntax,
-		pkg:   pkg,
+		fset:     fset,
+		files:    allFiles,
+		packages: pkgs, // Store all packages for import resolution
 	}, nil
 }
 
@@ -135,9 +158,19 @@ func (g *OpenAPICollector) buildImportAliasMap(file *ast.File) (map[string]strin
 		} else {
 			// No explicit alias - get the actual package name from go/packages
 			// This handles cases like "gopkg.in/yaml.v3" where package name is "yaml", not "v3"
-			importedPkg, exists := g.goParser.pkg.Imports[importPath]
-			if !exists {
-				return nil, fmt.Errorf("import %s not found in go/packages Imports map", importPath)
+			// Search through all loaded packages to find this import
+			var importedPkg *packages.Package
+
+			for _, pkg := range g.goParser.packages {
+				if imp, exists := pkg.Imports[importPath]; exists {
+					importedPkg = imp
+
+					break
+				}
+			}
+
+			if importedPkg == nil {
+				return nil, fmt.Errorf("import %s not found in any loaded package's Imports map", importPath)
 			}
 
 			if importedPkg.Name == "" {

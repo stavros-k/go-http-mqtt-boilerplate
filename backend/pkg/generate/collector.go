@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"os"
@@ -75,9 +76,9 @@ const (
 
 // GoParser holds the parsed Go AST and type information.
 type GoParser struct {
-	fset  *token.FileSet
-	files []*ast.File
-	pkg   *packages.Package
+	fset     *token.FileSet
+	files    []*ast.File
+	packages []*packages.Package // All loaded packages for import resolution
 }
 
 type TSParser struct {
@@ -125,21 +126,22 @@ func normalizeLocalPackagePath(path string) string {
 }
 
 type OpenAPICollectorOptions struct {
-	GoTypesDirPath               string // Path to Go types file for parsing
-	DocsFileOutputPath           string // Path for generated API docs JSON file
-	DatabaseSchemaFileOutputPath string // Path for generated DB schema SQL file
-	OpenAPISpecOutputPath        string // Path for generated OpenAPI YAML file
+	GoTypesDirPaths              []string        // Paths to Go types directories for parsing (e.g., common types + API-specific types)
+	DocsFileOutputPath           string          // Path for generated API docs JSON file
+	DatabaseSchemaFileOutputPath string          // Path for generated DB schema SQL file
+	OpenAPISpecOutputPath        string          // Path for generated OpenAPI YAML file
+	Dialect                      dialect.Dialect // Database dialect
 	APIInfo                      APIInfo
 }
 
-// NewOpenAPICollector parses the Go types directory and generates a TypeScript AST for metadata extraction.
+// NewOpenAPICollector parses the Go types directories and generates a TypeScript AST for metadata extraction.
 func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPICollector, error) {
 	var err error
 
 	l = l.With(slog.String("component", "openapi-collector"))
 
-	if opts.GoTypesDirPath == "" {
-		return nil, errors.New("go types dir path is required")
+	if len(opts.GoTypesDirPaths) == 0 {
+		return nil, errors.New("at least one go types dir path is required")
 	}
 
 	if opts.DatabaseSchemaFileOutputPath == "" {
@@ -154,10 +156,13 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 		return nil, errors.New("OpenAPI spec file path is required")
 	}
 
-	// Normalize path to be recognized as a local package
-	goTypesDirPath := normalizeLocalPackagePath(opts.GoTypesDirPath)
+	// Normalize all paths to be recognized as local packages
+	var goTypesDirPaths []string
+	for _, path := range opts.GoTypesDirPaths {
+		goTypesDirPaths = append(goTypesDirPaths, normalizeLocalPackagePath(path))
+	}
 
-	l.Debug("Creating doc collector", slog.String("goTypesDirPath", goTypesDirPath))
+	l.Debug("Creating doc collector", slog.Any("goTypesDirPaths", goTypesDirPaths))
 
 	docCollector := &OpenAPICollector{
 		l:                  l,
@@ -179,28 +184,24 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 		primitiveTypeMapping: getPrimitiveTypeMappings(),
 	}
 
-	dbSchema, err := docCollector.GenerateDatabaseSchema(opts.DatabaseSchemaFileOutputPath)
+	dbSchema, err := docCollector.GenerateDatabaseSchema(opts.Dialect, opts.DatabaseSchemaFileOutputPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get database schema: %w", err)
+		return nil, fmt.Errorf("failed to generate database schema: %w", err)
 	}
 
+	docCollector.database.Dialect = opts.Dialect.String()
 	docCollector.database.Schema = dbSchema
 
-	dbStats, err := docCollector.GetDatabaseStats(dbSchema)
+	// Parse all directories at once using parseGoTypesDirs
+	goParser, err := docCollector.parseGoTypesDirs(goTypesDirPaths)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get database stats: %w", err)
-	}
-
-	docCollector.database.Stats = dbStats
-
-	goParser, err := docCollector.parseGoTypesDir(goTypesDirPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse Go types directory: %w", err)
+		return nil, fmt.Errorf("failed to parse Go types directories: %w", err)
 	}
 
 	docCollector.goParser = goParser
 
-	tsParser, err := newTSParser(l, goTypesDirPath)
+	// Create TypeScript parser for all directories
+	tsParser, err := newTSParser(l, goTypesDirPaths)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TypeScript parser: %w", err)
 	}
@@ -208,7 +209,7 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 	docCollector.tsParser = tsParser
 
 	// Walk the AST and extract all type information in one pass
-	if err := docCollector.extractAllTypesFromGo(goParser); err != nil {
+	if err := docCollector.extractAllTypesFromGo(docCollector.goParser); err != nil {
 		return nil, fmt.Errorf("failed to extract types: %w", err)
 	}
 
@@ -217,9 +218,9 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 	return docCollector, nil
 }
 
-// newTSParser creates a TypeScript parser using guts for the specified Go types directory.
-func newTSParser(l *slog.Logger, goTypesDirPath string) (*TSParser, error) {
-	l.Debug("Parsing Go types directory", slog.String("path", goTypesDirPath))
+// newTSParser creates a TypeScript parser using guts for the specified Go types directories.
+func newTSParser(l *slog.Logger, goTypesDirPaths []string) (*TSParser, error) {
+	l.Debug("Parsing Go types directories", slog.Any("paths", goTypesDirPaths))
 
 	goParser, err := guts.NewGolangParser()
 	if err != nil {
@@ -236,12 +237,19 @@ func newTSParser(l *slog.Logger, goTypesDirPath string) (*TSParser, error) {
 		},
 	})
 
-	if _, err := os.Stat(goTypesDirPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("failed to validate TypeScript parser: go types dir path %s does not exist", goTypesDirPath)
-	}
+	// Validate and include all directories
+	for _, goTypesDirPath := range goTypesDirPaths {
+		if _, err := os.Stat(goTypesDirPath); err != nil {
+			if !os.IsNotExist(err) {
+				return nil, fmt.Errorf("failed to stat go types dir path %s: %w", goTypesDirPath, err)
+			}
 
-	if err := goParser.IncludeGenerate(goTypesDirPath); err != nil {
-		return nil, fmt.Errorf("failed to include go types dir for parsing: %w", err)
+			return nil, fmt.Errorf("failed to validate TypeScript parser: go types dir path %s does not exist", goTypesDirPath)
+		}
+
+		if err := goParser.IncludeGenerate(goTypesDirPath); err != nil {
+			return nil, fmt.Errorf("failed to include go types dir %s for parsing: %w", goTypesDirPath, err)
+		}
 	}
 
 	var errs []error
