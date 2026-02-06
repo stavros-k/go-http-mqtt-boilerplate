@@ -6,7 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// RequestIDMiddleware extracts or generates a request ID and.
+// RequestIDMiddleware extracts the request ID from the request header or generates a new one
+// if it's not present and stores it in the request context.
 func (s *Handler) RequestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get or generate request ID

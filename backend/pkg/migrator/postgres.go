@@ -10,7 +10,6 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"net/url"
-	"strings"
 
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
 	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
@@ -35,19 +34,10 @@ func newPostgresMigrator(l *slog.Logger, fs embed.FS, connStr string) (*postgres
 		return nil, fmt.Errorf("failed to read migrations directory: %w", err)
 	}
 
-	// Parse the connection string to build the postgres:// URL for dbmate
-	var u *url.URL
-	if strings.HasPrefix(connStr, "postgres://") || strings.HasPrefix(connStr, "postgresql://") {
-		u, err = url.Parse(connStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse connection string: %w", err)
-		}
-	} else {
-		// Convert key=value format to URL format
-		u, err = parsePostgresConnString(connStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse connection string: %w", err)
-		}
+	// Parse the connection string URL for dbmate
+	u, err := url.Parse(connStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse connection string: %w", err)
 	}
 
 	db := dbmate.New(u)
@@ -364,59 +354,4 @@ func (m *postgresMigrator) getTableIndexes(ctx context.Context, db *sql.DB, sche
 	}
 
 	return indexes, nil
-}
-
-// parsePostgresConnString converts a key=value connection string to a postgres:// URL.
-func parsePostgresConnString(connStr string) (*url.URL, error) {
-	params := make(map[string]string)
-
-	// Parse key=value pairs
-	pairs := strings.SplitSeq(connStr, " ")
-	for pair := range pairs {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) == 2 {
-			params[parts[0]] = parts[1]
-		}
-	}
-
-	// Build URL
-	host := params["host"]
-	if host == "" {
-		host = "localhost"
-	}
-
-	port := params["port"]
-	if port == "" {
-		port = "5432"
-	}
-
-	dbname := params["dbname"]
-	if dbname == "" {
-		return nil, errors.New("dbname is required in connection string")
-	}
-
-	user := params["user"]
-	if user == "" {
-		user = "postgres"
-	}
-
-	password := params["password"]
-
-	sslmode := params["sslmode"]
-	if sslmode == "" {
-		sslmode = "disable"
-	}
-
-	u := &url.URL{
-		Scheme: "postgres",
-		User:   url.UserPassword(user, password),
-		Host:   fmt.Sprintf("%s:%s", host, port),
-		Path:   "/" + dbname,
-	}
-
-	q := u.Query()
-	q.Set("sslmode", sslmode)
-	u.RawQuery = q.Encode()
-
-	return u, nil
 }

@@ -10,6 +10,7 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"net/url"
+	"strings"
 
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
 	_ "github.com/amacneil/dbmate/v2/pkg/driver/sqlite"
@@ -34,6 +35,9 @@ func newSQLiteMigrator(l *slog.Logger, fs embed.FS, connStr string) (*sqliteMigr
 		return nil, fmt.Errorf("failed to read migrations directory: %w", err)
 	}
 
+	if strings.Contains(connStr, "memory") {
+		return nil, errors.New("in-memory databases are not supported")
+	}
 	u, err := url.Parse("sqlite:" + connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse database url: %w", err)
