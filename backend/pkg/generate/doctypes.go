@@ -1,7 +1,5 @@
 package generate
 
-import "http-mqtt-boilerplate/backend/pkg/dbstats"
-
 // TypeInfo contains comprehensive metadata about a Go type extracted from guts.
 type TypeInfo struct {
 	Name            string          `json:"name"`            // Type name (e.g., "PingResponse")
@@ -173,7 +171,7 @@ type ServerInfo struct {
 }
 
 type Database struct {
-	Dialect string                `json:"dialect"`
-	Schema  string                `json:"schema"`
-	Stats   dbstats.DatabaseStats `json:"stats"`
+	Dialect string        `json:"dialect"`
+	Schema  string        `json:"schema"`
+	Stats   DatabaseStats `json:"stats"`
 }

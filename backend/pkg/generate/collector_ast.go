@@ -28,7 +28,10 @@ func (g *OpenAPICollector) parseGoTypesDirs(goTypesDirPaths []string) (*GoParser
 
 	// Validate all paths exist
 	for _, path := range goTypesDirPaths {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
+		if _, err := os.Stat(path); err != nil {
+			if !os.IsNotExist(err) {
+				return nil, fmt.Errorf("failed to parse Go types directory: path %s does not exist", path)
+			}
 			return nil, fmt.Errorf("failed to parse Go types directory: path %s does not exist", path)
 		}
 	}

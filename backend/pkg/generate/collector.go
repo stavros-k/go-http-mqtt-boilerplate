@@ -240,7 +240,10 @@ func newTSParser(l *slog.Logger, goTypesDirPaths []string) (*TSParser, error) {
 
 	// Validate and include all directories
 	for _, goTypesDirPath := range goTypesDirPaths {
-		if _, err := os.Stat(goTypesDirPath); os.IsNotExist(err) {
+		if _, err := os.Stat(goTypesDirPath); err != nil {
+			if !os.IsNotExist(err) {
+				return nil, fmt.Errorf("failed to stat go types dir path %s: %w", goTypesDirPath, err)
+			}
 			return nil, fmt.Errorf("failed to validate TypeScript parser: go types dir path %s does not exist", goTypesDirPath)
 		}
 

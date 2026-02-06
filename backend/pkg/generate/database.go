@@ -6,7 +6,6 @@ import (
 	"fmt"
 	postgres "http-mqtt-boilerplate/backend/internal/database/clouddb"
 	sqlite "http-mqtt-boilerplate/backend/internal/database/localdb"
-	"http-mqtt-boilerplate/backend/pkg/dbstats"
 	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"http-mqtt-boilerplate/backend/pkg/migrator"
 	"http-mqtt-boilerplate/backend/pkg/utils"
@@ -18,7 +17,7 @@ import (
 
 // GenerateDatabaseSchema runs migrations on a temporary database and returns the resulting schema and stats.
 // This generates a SQL schema dump from the application's migrations.
-func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutputPath string) (string, dbstats.DatabaseStats, error) {
+func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutputPath string) (string, DatabaseStats, error) {
 	g.l.Debug("Generating database schema from migrations", slog.String("dialect", d.String()))
 
 	// Create temporary database based on dialect
@@ -33,7 +32,7 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 		// We can't use :memory: because each new connection creates a fresh empty database
 		tempDBFile, err := os.CreateTemp(os.TempDir(), "temp-db-*.sqlite")
 		if err != nil {
-			return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to create temporary database file: %w", err)
+			return "", DatabaseStats{}, fmt.Errorf("failed to create temporary database file: %w", err)
 		}
 
 		// Close immediately - we only need the file path, not the handle
@@ -42,7 +41,7 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 				g.l.Error("failed to remove temporary database file", slog.String("file", tempDBFile.Name()), utils.ErrAttr(removeErr))
 			}
 
-			return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to close temporary database file: %w", err)
+			return "", DatabaseStats{}, fmt.Errorf("failed to close temporary database file: %w", err)
 		}
 
 		tempDB = tempDBFile.Name()
@@ -64,7 +63,7 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 			postgrescontainer.BasicWaitStrategies(),
 		)
 		if err != nil {
-			return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to start PostgreSQL container: %w", err)
+			return "", DatabaseStats{}, fmt.Errorf("failed to start PostgreSQL container: %w", err)
 		}
 
 		cleanup = func() {
@@ -77,11 +76,11 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 		if err != nil {
 			cleanup()
 
-			return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to get connection string: %w", err)
+			return "", DatabaseStats{}, fmt.Errorf("failed to get connection string: %w", err)
 		}
 
 	default:
-		return "", dbstats.DatabaseStats{}, fmt.Errorf("unsupported dialect: %s", d)
+		return "", DatabaseStats{}, fmt.Errorf("unsupported dialect: %s", d)
 	}
 
 	defer cleanup()
@@ -95,31 +94,31 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(d dialect.Dialect, schemaOutpu
 	// Create migrator
 	mig, err := migrator.New(g.l, d, migrationsFS, tempDB)
 	if err != nil {
-		return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to create migrator: %w", err)
+		return "", DatabaseStats{}, fmt.Errorf("failed to create migrator: %w", err)
 	}
 
 	// Run migrations
 	if err := mig.Migrate(); err != nil {
-		return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to migrate database: %w", err)
+		return "", DatabaseStats{}, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
 	// Dump the database schema to the specified output path
 	if err = mig.DumpSchema(schemaOutputPath); err != nil {
-		return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to dump schema: %w", err)
+		return "", DatabaseStats{}, fmt.Errorf("failed to dump schema: %w", err)
 	}
 
 	// Read the schema file
 	schemaBytes, err := os.ReadFile(schemaOutputPath)
 	if err != nil {
-		return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to read schema file: %w", err)
+		return "", DatabaseStats{}, fmt.Errorf("failed to read schema file: %w", err)
 	}
 
 	schema := string(bytes.TrimSpace(schemaBytes))
 
-	// Get stats using the migrator (queries the same database that was just migrated)
-	stats, err := mig.GetDatabaseStats()
+	// Get stats by querying the database directly
+	stats, err := GetDatabaseStats(g.l, d, tempDB)
 	if err != nil {
-		return "", dbstats.DatabaseStats{}, fmt.Errorf("failed to get database stats: %w", err)
+		return "", DatabaseStats{}, fmt.Errorf("failed to get database stats: %w", err)
 	}
 
 	stats.NonNil()

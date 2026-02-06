@@ -3,7 +3,6 @@ package migrator
 import (
 	"embed"
 	"fmt"
-	"http-mqtt-boilerplate/backend/pkg/dbstats"
 	"http-mqtt-boilerplate/backend/pkg/dialect"
 	"log/slog"
 )
@@ -12,7 +11,6 @@ import (
 type Migrator interface {
 	Migrate() error
 	DumpSchema(outputPath string) error
-	GetDatabaseStats() (dbstats.DatabaseStats, error)
 }
 
 // New creates a migrator for the specified dialect.
