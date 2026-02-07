@@ -65,8 +65,6 @@ func (m *MiddlewareHandler) LoggerMiddleware(next http.Handler) http.Handler {
 		// Log request start
 		start := time.Now()
 
-		reqLogger.Info("request started")
-
 		// Call next handler with enhanced context
 		next.ServeHTTP(wrapped, r.WithContext(ctx))
 

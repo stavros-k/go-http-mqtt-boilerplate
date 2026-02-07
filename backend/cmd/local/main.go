@@ -67,10 +67,10 @@ func main() {
 
 	if !config.Generate {
 		// For runtime, initialize database
-		err := helpers.RunMigrations(logger, config, "shared/migrations", "local/migrations")
+		err := helpers.RunMigrations(logger, config.Database, "shared/migrations", "local/migrations")
 		fatalIfErr(logger, err)
 
-		pool, err = pgxpool.New(sigCtx, config.Database)
+		pool, err = helpers.NewPgxPool(sigCtx, logger, config.Database)
 		fatalIfErr(logger, err)
 
 		defer pool.Close()
