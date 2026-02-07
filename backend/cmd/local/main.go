@@ -183,6 +183,8 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *localapi.H
 	mw := sharedapi.NewMiddlewareHandler(l)
 
 	rb.Route("/api", func(rb *router.RouteBuilder) {
+		// Add recoverer
+		rb.Use(mw.RecoveryMiddleware)
 		// Add request ID
 		rb.Use(mw.RequestIDMiddleware)
 		// Add request logger

@@ -68,6 +68,16 @@ func (s *HTTPServer) ShutdownWithDefaultTimeout(ctx context.Context) error {
 	return s.Server.Shutdown(ctx)
 }
 
+// MiddlewareHandler holds the logger for middleware.
+type MiddlewareHandler struct {
+	l *slog.Logger
+}
+
+// NewMiddlewareHandler creates a new middleware handler.
+func NewMiddlewareHandler(l *slog.Logger) *MiddlewareHandler {
+	return &MiddlewareHandler{l: l}
+}
+
 // HandlerFunc is a HTTP handler that can return an error.
 type HandlerFunc func(w http.ResponseWriter, r *http.Request) error
 
