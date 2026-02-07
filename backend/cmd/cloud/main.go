@@ -17,7 +17,6 @@ import (
 	cloudservices "http-mqtt-boilerplate/backend/internal/cloud/services"
 	"http-mqtt-boilerplate/backend/internal/config"
 	apicommon "http-mqtt-boilerplate/backend/internal/shared/api"
-	sharedapi "http-mqtt-boilerplate/backend/internal/shared/api"
 	"http-mqtt-boilerplate/backend/internal/shared/helpers"
 	"http-mqtt-boilerplate/backend/pkg/generate"
 	"http-mqtt-boilerplate/backend/pkg/router"
@@ -110,7 +109,7 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *cloudapi.H
 	l.Info("Registering HTTP handlers...")
 
 	// Create middleware handler
-	mw := sharedapi.NewMiddlewareHandler(l)
+	mw := apicommon.NewMiddlewareHandler(l)
 
 	rb.Route("/api", func(rb *router.RouteBuilder) {
 		// Add recoverer

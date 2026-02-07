@@ -20,7 +20,6 @@ import (
 	mqttapi "http-mqtt-boilerplate/backend/internal/local/mqtt"
 	localservices "http-mqtt-boilerplate/backend/internal/local/services"
 	apicommon "http-mqtt-boilerplate/backend/internal/shared/api"
-	sharedapi "http-mqtt-boilerplate/backend/internal/shared/api"
 	"http-mqtt-boilerplate/backend/internal/shared/helpers"
 	"http-mqtt-boilerplate/backend/pkg/generate"
 	"http-mqtt-boilerplate/backend/pkg/mqtt"
@@ -180,7 +179,7 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *localapi.H
 	l.Info("Registering HTTP handlers...")
 
 	// Create middleware handler
-	mw := sharedapi.NewMiddlewareHandler(l)
+	mw := apicommon.NewMiddlewareHandler(l)
 
 	rb.Route("/api", func(rb *router.RouteBuilder) {
 		// Add recoverer
