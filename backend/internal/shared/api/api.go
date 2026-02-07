@@ -1,15 +1,18 @@
 package apicommon
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
-	"http-mqtt-boilerplate/backend/pkg/router"
 	"http-mqtt-boilerplate/backend/internal/shared/types"
+	"http-mqtt-boilerplate/backend/pkg/router"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 )
 
@@ -17,9 +20,63 @@ const (
 	MaxBodySize     = 1048576 // 1MB
 	MaxBodyText     = "1MB"
 	RequestIDHeader = "X-Request-ID"
+
+	ReadHeaderTimeout = 5 * time.Second
+	ReadTimeout       = 30 * time.Second
+	WriteTimeout      = 30 * time.Second
+	IdleTimeout       = 120 * time.Second
+	ShutdownTimeout   = 30 * time.Second
 )
 
 const zeroUUID = "00000000-0000-0000-0000-000000000000"
+
+type HTTPServer struct {
+	l      *slog.Logger
+	server *http.Server
+}
+
+func NewHTTPServer(l *slog.Logger, addr string, handler http.Handler) *HTTPServer {
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: ReadHeaderTimeout,
+		ReadTimeout:       ReadTimeout,
+		WriteTimeout:      WriteTimeout,
+		IdleTimeout:       IdleTimeout,
+	}
+	srv.SetKeepAlivesEnabled(true)
+
+	return &HTTPServer{
+		l:      l.With(slog.String("component", "http-server")),
+		server: srv,
+	}
+}
+
+func (s *HTTPServer) StartOnBackground(cancel context.CancelFunc) {
+	go func() {
+		s.l.Info("starting", "addr", s.server.Addr)
+		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			s.l.Error("failed", utils.ErrAttr(err))
+			cancel()
+		}
+	}()
+}
+
+func (s *HTTPServer) ShutdownWithDefaultTimeout() error {
+	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
+	defer cancel()
+	return s.server.Shutdown(ctx)
+}
+
+// MiddlewareHandler holds the logger for middleware.
+type MiddlewareHandler struct {
+	l *slog.Logger
+}
+
+// NewMiddlewareHandler creates a new middleware handler.
+func NewMiddlewareHandler(l *slog.Logger) *MiddlewareHandler {
+	return &MiddlewareHandler{l: l}
+}
 
 // HandlerFunc is a HTTP handler that can return an error.
 type HandlerFunc func(w http.ResponseWriter, r *http.Request) error

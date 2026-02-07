@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -20,10 +19,9 @@ import (
 	localdb "http-mqtt-boilerplate/backend/internal/local/gen"
 	mqttapi "http-mqtt-boilerplate/backend/internal/local/mqtt"
 	localservices "http-mqtt-boilerplate/backend/internal/local/services"
-	"http-mqtt-boilerplate/backend/internal/migrations"
-	sharedapi "http-mqtt-boilerplate/backend/internal/shared/api"
+	apicommon "http-mqtt-boilerplate/backend/internal/shared/api"
+	"http-mqtt-boilerplate/backend/internal/shared/helpers"
 	"http-mqtt-boilerplate/backend/pkg/generate"
-	"http-mqtt-boilerplate/backend/pkg/migrator"
 	"http-mqtt-boilerplate/backend/pkg/mqtt"
 	"http-mqtt-boilerplate/backend/pkg/router"
 	"http-mqtt-boilerplate/backend/pkg/utils"
@@ -42,19 +40,20 @@ func main() {
 	sigCtx, sigCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer sigCancel()
 
+	logger := slog.Default()
 	config, err := config.New()
 	if err != nil {
-		fatalIfErr(slog.Default(), fmt.Errorf("failed to create config: %w", err))
+		fatalIfErr(logger, fmt.Errorf("failed to create config: %w", err))
 	}
 
 	defer func() {
 		if err := config.Close(); err != nil {
-			slog.Default().Error("failed to close config", utils.ErrAttr(err))
+			logger.Error("failed to close config", utils.ErrAttr(err))
 		}
 	}()
 
 	// Initialize logger
-	logger := getLogger(config)
+	logger = helpers.GetLogger(config)
 
 	// Create collector for OpenAPI generation
 	collector, err := getCollector(config, logger)
@@ -68,11 +67,10 @@ func main() {
 
 	if !config.Generate {
 		// For runtime, initialize database
-		if err := runMigrations(logger, config); err != nil {
-			fatalIfErr(logger, fmt.Errorf("failed to run migrations: %w", err))
-		}
+		err := helpers.RunMigrations(logger, config.Database, "shared/migrations", "local/migrations")
+		fatalIfErr(logger, err)
 
-		pool, err = pgxpool.New(context.TODO(), config.Database)
+		pool, err = helpers.NewPgxPool(sigCtx, logger, config.Database)
 		fatalIfErr(logger, err)
 
 		defer pool.Close()
@@ -131,20 +129,8 @@ func main() {
 
 	// HTTP Server
 	httpAddr := fmt.Sprintf(":%d", config.Port)
-	httpServer := &http.Server{
-		Addr:              httpAddr,
-		Handler:           rb.Router(),
-		ReadHeaderTimeout: readHeaderTimeout,
-	}
-
-	go func() {
-		logger.Info("http server listening", slog.String("address", httpAddr))
-
-		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("server failed", utils.ErrAttr(err))
-			sigCancel()
-		}
-	}()
+	httpServer := apicommon.NewHTTPServer(logger, httpAddr, rb.Router())
+	httpServer.StartOnBackground(sigCancel)
 
 	// Wait for signal (either OS or some failure)
 	<-sigCtx.Done()
@@ -153,10 +139,7 @@ func main() {
 	// Shutdown HTTP server
 	logger.Info("http server shutting down...")
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer shutdownCancel()
-
-	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+	if err := httpServer.ShutdownWithDefaultTimeout(); err != nil {
 		logger.Error("http server shutdown failed", utils.ErrAttr(err))
 	}
 
@@ -196,9 +179,11 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *localapi.H
 	l.Info("Registering HTTP handlers...")
 
 	// Create middleware handler
-	mw := sharedapi.NewMiddlewareHandler(l)
+	mw := apicommon.NewMiddlewareHandler(l)
 
 	rb.Route("/api", func(rb *router.RouteBuilder) {
+		// Add recoverer
+		rb.Use(mw.RecoveryMiddleware)
 		// Add request ID
 		rb.Use(mw.RequestIDMiddleware)
 		// Add request logger
@@ -270,20 +255,6 @@ func getCollector(c *config.Config, l *slog.Logger) (generate.MetadataCollector,
 	})
 }
 
-func getLogger(config *config.Config) *slog.Logger {
-	logOptions := slog.HandlerOptions{
-		Level:       config.LogLevel,
-		ReplaceAttr: utils.SlogReplacer,
-	}
-
-	var logHandler slog.Handler = slog.NewJSONHandler(config.LogOutput, &logOptions)
-	if config.Generate {
-		logHandler = slog.NewTextHandler(config.LogOutput, &logOptions)
-	}
-
-	return slog.New(logHandler).With(slog.String("version", utils.GetVersionShort()))
-}
-
 func fatalIfErr(l *slog.Logger, err error) {
 	if err == nil {
 		return
@@ -291,23 +262,4 @@ func fatalIfErr(l *slog.Logger, err error) {
 
 	l.Error("error", utils.ErrAttr(err))
 	os.Exit(1)
-}
-
-func runMigrations(l *slog.Logger, c *config.Config) error {
-	l.Info("Running database migrations")
-
-	// Create migrator with shared + local migration directories
-	mig, err := migrator.New(l, c.Database, migrations.GetFS(), "shared/migrations", "local/migrations")
-	if err != nil {
-		return fmt.Errorf("failed to create migrator: %w", err)
-	}
-
-	// Run migrations
-	if err := mig.Migrate(); err != nil {
-		return fmt.Errorf("failed to migrate: %w", err)
-	}
-
-	l.Info("Database migrations completed successfully")
-
-	return nil
 }
