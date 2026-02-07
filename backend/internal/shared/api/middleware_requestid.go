@@ -27,6 +27,8 @@ func (m *MiddlewareHandler) RequestIDMiddleware(next http.Handler) http.Handler 
 			requestID = uuid.New().String()
 		}
 
+		w.Header().Set(RequestIDHeader, requestID)
+
 		// Store request ID in context
 		ctx := WithRequestID(r.Context(), requestID)
 
