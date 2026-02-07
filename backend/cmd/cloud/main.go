@@ -59,12 +59,10 @@ func main() {
 		err := helpers.RunMigrations(logger, config, "shared/migrations", "cloud/migrations")
 		fatalIfErr(logger, err)
 
-		pool, err = pgxpool.New(context.TODO(), config.Database)
+		pool, err = pgxpool.New(sigCtx, config.Database)
 		fatalIfErr(logger, err)
 
-		defer func() {
-			pool.Close()
-		}()
+		defer pool.Close()
 
 		queries = clouddb.New(pool)
 	}
@@ -100,7 +98,7 @@ func main() {
 	// Shutdown HTTP server
 	logger.Info("http server shutting down...")
 
-	if err := httpServer.ShutdownWithDefaultTimeout(context.Background()); err != nil {
+	if err := httpServer.ShutdownWithDefaultTimeout(); err != nil {
 		logger.Error("http server shutdown failed", utils.ErrAttr(err))
 	}
 

@@ -62,8 +62,8 @@ func (s *HTTPServer) StartOnBackground(cancel context.CancelFunc) {
 	}()
 }
 
-func (s *HTTPServer) ShutdownWithDefaultTimeout(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, ShutdownTimeout)
+func (s *HTTPServer) ShutdownWithDefaultTimeout() error {
+	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
 	return s.Server.Shutdown(ctx)
 }
