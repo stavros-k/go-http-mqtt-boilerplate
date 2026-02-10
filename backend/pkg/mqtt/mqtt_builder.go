@@ -261,7 +261,7 @@ func (mb *MQTTBuilder) Connect(ctx context.Context) error {
 		return fmt.Errorf("failed to connect to MQTT broker: %w", err)
 	}
 
-	mb.l.Info("Connected to MQTT broker")
+	mb.l.Info("Connection to MQTT broker established")
 
 	return nil
 }
