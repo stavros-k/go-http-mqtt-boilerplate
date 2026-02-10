@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	mqttbroker "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
@@ -29,11 +28,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
-)
-
-const (
-	shutdownTimeout   = 30 * time.Second
-	readHeaderTimeout = 5 * time.Second
 )
 
 func main() {
@@ -108,7 +102,7 @@ func main() {
 	}
 
 	go func() {
-		if err := mb.Connect(); err != nil {
+		if err := mb.Connect(sigCtx); err != nil {
 			logger.Error("Failed to connect to MQTT broker", utils.ErrAttr(err))
 		}
 	}()
@@ -144,7 +138,7 @@ func main() {
 	}
 
 	logger.Info("disconnecting from MQTT broker...")
-	mb.Disconnect()
+	mb.DisconnectWithDefaultTimeout()
 
 	// Shutdown MQTT broker
 	logger.Info("mqtt broker shutting down...")

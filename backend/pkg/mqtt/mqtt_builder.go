@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"http-mqtt-boilerplate/backend/pkg/generate"
@@ -10,24 +11,32 @@ import (
 	"sync/atomic"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.golang/autopaho"
+	"github.com/eclipse/paho.golang/paho"
+)
+
+const (
+	disconnectTimeout = 10 * time.Second
 )
 
 // MQTTBuilder provides a fluent API for registering MQTT publications and subscriptions.
 type MQTTBuilder struct {
-	client        mqtt.Client
+	connMgr       *autopaho.ConnectionManager
 	wrappedClient *MQTTClient
 	collector     generate.MQTTMetadataCollector
+	router        *paho.StandardRouter
 	l             *slog.Logger
 	operationIDs  map[string]struct{}
 	publications  map[string]*PublicationSpec
 	subscriptions map[string]*SubscriptionSpec
-	connected     bool
+	connected     atomic.Bool
+	opts          MQTTClientOptions
 
-	runConnectOnce atomic.Bool
+	registrationsCompleted atomic.Bool
 }
 
 // NewMQTTBuilder creates a new MQTT builder with the given broker configuration.
+// The builder does not connect immediately; call [MQTTBuilder.Connect] after registering all subscriptions.
 func NewMQTTBuilder(l *slog.Logger, collector generate.MQTTMetadataCollector, opts MQTTClientOptions) (*MQTTBuilder, error) {
 	mqttBuilderLogger := l.With(slog.String("component", "mqtt-builder"))
 
@@ -39,17 +48,22 @@ func NewMQTTBuilder(l *slog.Logger, collector generate.MQTTMetadataCollector, op
 		return nil, errors.New("client ID is required")
 	}
 
+	// Create a router for handling incoming messages
+	router := paho.NewStandardRouter()
+
 	mb := &MQTTBuilder{
 		collector:     collector,
+		router:        router,
 		l:             mqttBuilderLogger,
+		opts:          opts,
 		operationIDs:  make(map[string]struct{}),
 		publications:  make(map[string]*PublicationSpec),
 		subscriptions: make(map[string]*SubscriptionSpec),
-		connected:     false,
 	}
 
-	mb.client = newLowLevelMQTTClient(l, &opts, mb)
-	mb.wrappedClient = newWrappedMQTTClient(l, mb.client, mb)
+	// Create wrapped client with nil connMgr - will be populated in [MQTTBuilder.Connect]
+	// This allows [MQTTBuilder.Client] to be called before [MQTTBuilder.Connect]
+	mb.wrappedClient = newWrappedMQTTClient(l, nil, mb)
 
 	mqttBuilderLogger.Info("MQTT builder created", slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID))
 
@@ -63,8 +77,8 @@ func (mb *MQTTBuilder) Client() *MQTTClient {
 
 // RegisterPublish registers a publication operation.
 func (mb *MQTTBuilder) RegisterPublish(topic string, spec PublicationSpec) error {
-	if mb.runConnectOnce.Load() {
-		return errors.New("cannot register subscription after connecting to MQTT broker")
+	if mb.registrationsCompleted.Load() {
+		return errors.New("cannot register publication after connecting to MQTT broker")
 	}
 
 	// Validate topic
@@ -129,7 +143,7 @@ func (mb *MQTTBuilder) MustRegisterPublish(topic string, spec PublicationSpec) {
 
 // RegisterSubscribe registers a subscription operation.
 func (mb *MQTTBuilder) RegisterSubscribe(topic string, spec SubscriptionSpec) error {
-	if mb.runConnectOnce.Load() {
+	if mb.registrationsCompleted.Load() {
 		return errors.New("cannot register subscription after connecting to MQTT broker")
 	}
 
@@ -184,6 +198,9 @@ func (mb *MQTTBuilder) RegisterSubscribe(topic string, spec SubscriptionSpec) er
 	mb.operationIDs[spec.OperationID] = struct{}{}
 	mb.subscriptions[spec.OperationID] = &spec
 
+	// Register handler with the router
+	mb.router.RegisterHandler(mqttTopic, spec.Handler)
+
 	mb.l.Info("Registered MQTT subscription", slog.String("operationID", spec.OperationID), slog.String("topic", topic), slog.String("group", spec.Group))
 
 	return nil
@@ -197,13 +214,22 @@ func (mb *MQTTBuilder) MustRegisterSubscribe(topic string, spec SubscriptionSpec
 	}
 }
 
-// Connect connects to the MQTT broker.
-func (mb *MQTTBuilder) Connect() error {
-	mb.runConnectOnce.Store(true)
+// Connect connects to the MQTT broker and waits for the connection to complete.
+// This will disallow any further registration calls.
+// [MQTTBuilder.RegisterPublish], [MQTTBuilder.MustRegisterPublish],[MQTTBuilder.RegisterSubscribe], [MQTTBuilder.MustRegisterSubscribe].
+func (mb *MQTTBuilder) Connect(ctx context.Context) error {
+	mb.registrationsCompleted.Store(true)
+
+	// Create the autopaho connection now that all registrations are complete
+	connMgr, err := newAutopahoConnection(ctx, mb.l, &mb.opts, mb)
+	if err != nil {
+		return fmt.Errorf("failed to create connection manager: %w", err)
+	}
+
+	mb.connMgr = connMgr
+	mb.wrappedClient.connMgr = connMgr
 
 	mb.l.Info("Connecting to MQTT broker... Will wait indefinitely for connection to complete")
-
-	token := mb.client.Connect()
 
 	done := make(chan struct{})
 	defer close(done)
@@ -217,60 +243,72 @@ func (mb *MQTTBuilder) Connect() error {
 			case <-done:
 				return
 			case <-ticker.C:
-				if mb.client.IsConnectionOpen() {
+				if mb.wrappedClient.IsConnected() {
 					return
 				}
 
-				mb.l.Warn("MQTT has not done an initial connection yet, still waiting...")
+				mb.l.Warn("MQTT has not completed an initial connection yet, still waiting...")
 			}
 		}
 	}()
 
-	// Waits indefinitely for the connection to complete
-	token.Wait()
-
-	if err := token.Error(); err != nil {
+	// Wait for the initial connection with autopaho
+	// autopaho will automatically connect when [autopaho.NewConnection] is called
+	// from within the [newAutopahoConnection] function
+	// We just need to wait for the first successful connection
+	err = mb.connMgr.AwaitConnection(ctx)
+	if err != nil {
 		return fmt.Errorf("failed to connect to MQTT broker: %w", err)
 	}
 
-	mb.l.Info("Connected to MQTT broker")
+	mb.l.Info("Connection to MQTT broker established")
 
 	return nil
 }
 
-// Disconnect disconnects from the MQTT broker.
-func (mb *MQTTBuilder) Disconnect() {
-	if !mb.client.IsConnected() {
+// DisconnectWithDefaultTimeout disconnects from the MQTT broker with a default timeout.
+func (mb *MQTTBuilder) DisconnectWithDefaultTimeout() {
+	if !mb.wrappedClient.IsConnected() {
 		return
 	}
 
 	mb.l.Info("Disconnecting from MQTT broker...")
-	mb.client.Disconnect(250) // 250ms grace period
+
+	ctx, cancel := context.WithTimeout(context.Background(), disconnectTimeout)
+	defer cancel()
+
+	// Send disconnect packet
+	err := mb.connMgr.Disconnect(ctx)
+	if err != nil {
+		mb.l.Error("Failed to disconnect from MQTT broker", utils.ErrAttr(err))
+		return
+	}
+
 	mb.l.Info("Disconnected from MQTT broker")
 }
 
 // onConnect is called when the client successfully connects or reconnects to the broker.
-func (mb *MQTTBuilder) onConnect(client mqtt.Client) {
-	mb.l.Info("Connected to MQTT broker, subscribing to topics", slog.Int("subscriptionCount", len(mb.subscriptions)))
-	mb.connected = true
-
-	// Subscribe to all registered subscriptions
-	for _, spec := range mb.subscriptions {
+func (mb *MQTTBuilder) onConnect(ctx context.Context) func(*autopaho.ConnectionManager, *paho.Connack) {
+	return func(_ *autopaho.ConnectionManager, _ *paho.Connack) {
+		mb.l.Info("Connected to MQTT broker, subscribing to topics", slog.Int("subscriptionCount", len(mb.subscriptions)))
+		mb.connected.Store(true)
+		// Subscribe to all registered subscriptions at once
 		go func() {
-			if err := mb.wrappedClient.Subscribe(spec.OperationID); err != nil {
-				mb.l.Error("Failed to subscribe", slog.String("operationID", spec.OperationID), utils.ErrAttr(err))
+			if err := mb.wrappedClient.SubscribeAll(ctx); err != nil {
+				mb.l.Error("Failed to subscribe to topics", utils.ErrAttr(err))
 			}
 		}()
 	}
 }
 
-// onConnectionLost is called when the client loses connection to the broker.
-func (mb *MQTTBuilder) onConnectionLost(client mqtt.Client, err error) {
-	mb.l.Warn("Connection to MQTT broker lost", utils.ErrAttr(err))
-	mb.connected = false
+// onConnectionError is called when the client fails to connect to the broker.
+func (mb *MQTTBuilder) onConnectionError(err error) {
+	mb.l.Warn("Failed to connect to MQTT broker", utils.ErrAttr(err))
 }
 
-// onReconnecting is called when the client is reconnecting to the broker.
-func (mb *MQTTBuilder) onReconnecting(client mqtt.Client, opts *mqtt.ClientOptions) {
-	mb.l.Info("Reconnecting to MQTT broker", slog.String("broker", opts.Servers[0].String()))
+// onConnectionDown is called when an active connection to the broker is lost.
+func (mb *MQTTBuilder) onConnectionDown() bool {
+	mb.l.Warn("Connection to MQTT broker lost")
+	mb.connected.Store(false)
+	return true // Return true to allow autopaho to attempt reconnection
 }

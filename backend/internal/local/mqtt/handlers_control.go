@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	pahomqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.golang/paho"
 
 	"http-mqtt-boilerplate/backend/internal/local/mqtt/types"
 	"http-mqtt-boilerplate/backend/pkg/mqtt"
@@ -79,11 +79,11 @@ func (s *Handler) RegisterDeviceCommandSubscribe(mb *mqtt.MQTTBuilder) {
 }
 
 // handleDeviceCommand handles incoming device commands.
-func (s *Handler) handleDeviceCommand(client pahomqtt.Client, msg pahomqtt.Message) {
+func (s *Handler) handleDeviceCommand(msg *paho.Publish) {
 	var command types.DeviceCommand
-	if err := json.Unmarshal(msg.Payload(), &command); err != nil {
+	if err := json.Unmarshal(msg.Payload, &command); err != nil {
 		s.l.Error("Failed to unmarshal device command",
-			slog.String("topic", msg.Topic()),
+			slog.String("topic", msg.Topic),
 			utils.ErrAttr(err))
 
 		return
@@ -171,11 +171,11 @@ func (s *Handler) RegisterDeviceStatusSubscribe(mb *mqtt.MQTTBuilder) {
 }
 
 // handleDeviceStatus handles incoming device status updates.
-func (s *Handler) handleDeviceStatus(client pahomqtt.Client, msg pahomqtt.Message) {
+func (s *Handler) handleDeviceStatus(msg *paho.Publish) {
 	var status types.DeviceStatus
-	if err := json.Unmarshal(msg.Payload(), &status); err != nil {
+	if err := json.Unmarshal(msg.Payload, &status); err != nil {
 		s.l.Error("Failed to unmarshal device status",
-			slog.String("topic", msg.Topic()),
+			slog.String("topic", msg.Topic),
 			utils.ErrAttr(err))
 
 		return
