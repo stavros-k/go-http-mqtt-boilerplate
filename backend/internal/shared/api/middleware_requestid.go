@@ -14,13 +14,13 @@ func (m *MiddlewareHandler) RequestIDMiddleware(next http.Handler) http.Handler 
 		// Get or generate request ID
 		requestID := r.Header.Get(RequestIDHeader)
 		if requestID == "" {
-			uuid, err := uuid.NewV7()
+			reqID, err := uuid.NewV7()
 			if err != nil {
 				m.l.Error("failed to generate request ID", utils.ErrAttr(err))
 				http.Error(w, "Service temporarily unavailable", http.StatusServiceUnavailable)
 				return
 			}
-			requestID = uuid.String()
+			requestID = reqID.String()
 		}
 
 		w.Header().Set(RequestIDHeader, requestID)
