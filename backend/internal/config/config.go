@@ -14,27 +14,27 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-type EnvKey string
+type envKey string
 
 const (
-	envGenerate EnvKey = "GENERATE"
+	envGenerate envKey = "GENERATE"
 
-	envPort      EnvKey = "PORT"
-	envDataDir   EnvKey = "DATA_DIR"
-	envLogLevel  EnvKey = "LOG_LEVEL"
-	envLogToFile EnvKey = "LOG_TO_FILE"
+	envPort      envKey = "PORT"
+	envDataDir   envKey = "DATA_DIR"
+	envLogLevel  envKey = "LOG_LEVEL"
+	envLogToFile envKey = "LOG_TO_FILE"
 
-	envDBHost    EnvKey = "DB_HOST"
-	envDBPort    EnvKey = "DB_PORT"
-	envDBName    EnvKey = "DB_NAME"
-	envDBUser    EnvKey = "DB_USER"
-	envDBPass    EnvKey = "DB_PASSWORD"
-	envDBSSLMode EnvKey = "DB_SSLMODE"
+	envDBHost    envKey = "DB_HOST"
+	envDBPort    envKey = "DB_PORT"
+	envDBName    envKey = "DB_NAME"
+	envDBUser    envKey = "DB_USER"
+	envDBPass    envKey = "DB_PASSWORD"
+	envDBSSLMode envKey = "DB_SSLMODE"
 
-	envMQTTBroker   EnvKey = "MQTT_BROKER"
-	envMQTTClientID EnvKey = "MQTT_CLIENT_ID"
-	envMQTTUsername EnvKey = "MQTT_USERNAME"
-	envMQTTPassword EnvKey = "MQTT_PASSWORD"
+	envMQTTBroker   envKey = "MQTT_BROKER"
+	envMQTTClientID envKey = "MQTT_CLIENT_ID"
+	envMQTTUsername envKey = "MQTT_USERNAME"
+	envMQTTPassword envKey = "MQTT_PASSWORD"
 )
 
 const (
@@ -131,7 +131,7 @@ func (c *Config) Close() error {
 	return nil
 }
 
-func getStringEnv(key EnvKey, defaultVal string) string {
+func getStringEnv(key envKey, defaultVal string) string {
 	val, exists := os.LookupEnv(string(key))
 	if !exists {
 		return defaultVal
@@ -140,7 +140,7 @@ func getStringEnv(key EnvKey, defaultVal string) string {
 	return val
 }
 
-func getBoolEnv(key EnvKey, defaultVal bool) bool {
+func getBoolEnv(key envKey, defaultVal bool) bool {
 	val, exists := os.LookupEnv(string(key))
 	if !exists {
 		return defaultVal
@@ -155,7 +155,7 @@ func getBoolEnv(key EnvKey, defaultVal bool) bool {
 	}
 }
 
-func getIntEnv(key EnvKey, defaultVal int) int {
+func getIntEnv(key envKey, defaultVal int) int {
 	val, exists := os.LookupEnv(string(key))
 	if !exists {
 		return defaultVal
@@ -168,7 +168,7 @@ func getIntEnv(key EnvKey, defaultVal int) int {
 	return defaultVal
 }
 
-func getLogLevelEnv(key EnvKey, defaultVal slog.Leveler) slog.Leveler {
+func getLogLevelEnv(key envKey, defaultVal slog.Leveler) slog.Leveler {
 	val, exists := os.LookupEnv(string(key))
 	if !exists {
 		return defaultVal
