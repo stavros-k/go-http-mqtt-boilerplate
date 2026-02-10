@@ -80,7 +80,7 @@ func (mb *MQTTBuilder) Client() *MQTTClient {
 // RegisterPublish registers a publication operation.
 func (mb *MQTTBuilder) RegisterPublish(topic string, spec PublicationSpec) error {
 	if mb.registrationsCompleted.Load() {
-		return errors.New("cannot register subscription after connecting to MQTT broker")
+		return errors.New("cannot register publication after connecting to MQTT broker")
 	}
 
 	// Validate topic
@@ -271,7 +271,11 @@ func (mb *MQTTBuilder) DisconnectWithDefaultTimeout() {
 	defer cancel()
 
 	// Send disconnect packet
-	_ = mb.connMgr.Disconnect(ctx)
+	err := mb.connMgr.Disconnect(ctx)
+	if err != nil {
+		mb.l.Error("Failed to disconnect from MQTT broker", utils.ErrAttr(err))
+		return
+	}
 
 	mb.l.Info("Disconnected from MQTT broker")
 }
