@@ -308,7 +308,7 @@ func (mb *MQTTBuilder) onConnectionError(err error) {
 
 // onConnectionDown is called when an active connection to the broker is lost.
 func (mb *MQTTBuilder) onConnectionDown() bool {
-	mb.l.Warn("Connection to MQTT broker lost")
+	mb.l.Warn("connection to mqtt broker lost")
 	mb.connected.Store(false)
 	return true // Return true to allow autopaho to attempt reconnection
 }
