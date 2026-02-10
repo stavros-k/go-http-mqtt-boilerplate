@@ -65,7 +65,7 @@ func NewMQTTBuilder(l *slog.Logger, collector generate.MQTTMetadataCollector, op
 	// This allows [MQTTBuilder.Client] to be called before [MQTTBuilder.Connect]
 	mb.wrappedClient = newWrappedMQTTClient(l, nil, mb)
 
-	mqttBuilderLogger.Info("MQTT builder created", slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID))
+	mqttBuilderLogger.Info("mqtt builder created", slog.String("broker", opts.BrokerURL), slog.String("clientID", opts.ClientID))
 
 	return mb, nil
 }
@@ -136,7 +136,7 @@ func (mb *MQTTBuilder) RegisterPublish(topic string, spec PublicationSpec) error
 // MustRegisterPublish registers a publication operation and terminates the program if an error occurs.
 func (mb *MQTTBuilder) MustRegisterPublish(topic string, spec PublicationSpec) {
 	if err := mb.RegisterPublish(topic, spec); err != nil {
-		mb.l.Error("Failed to register publication", slog.String("operationID", spec.OperationID), slog.String("topic", topic), slog.String("group", spec.Group), utils.ErrAttr(err))
+		mb.l.Error("failed to register publication", slog.String("operationID", spec.OperationID), slog.String("topic", topic), slog.String("group", spec.Group), utils.ErrAttr(err))
 		os.Exit(1)
 	}
 }
@@ -209,7 +209,7 @@ func (mb *MQTTBuilder) RegisterSubscribe(topic string, spec SubscriptionSpec) er
 // MustRegisterSubscribe registers a subscription operation and terminates the program if an error occurs.
 func (mb *MQTTBuilder) MustRegisterSubscribe(topic string, spec SubscriptionSpec) {
 	if err := mb.RegisterSubscribe(topic, spec); err != nil {
-		mb.l.Error("Failed to register subscription", slog.String("operationID", spec.OperationID), slog.String("topic", topic), slog.String("group", spec.Group), utils.ErrAttr(err))
+		mb.l.Error("failed to register subscription", slog.String("operationID", spec.OperationID), slog.String("topic", topic), slog.String("group", spec.Group), utils.ErrAttr(err))
 		os.Exit(1)
 	}
 }
@@ -247,7 +247,7 @@ func (mb *MQTTBuilder) Connect(ctx context.Context) error {
 					return
 				}
 
-				mb.l.Warn("MQTT has not completed an initial connection yet, still waiting...")
+				mb.l.Warn("mqtt has not completed an initial connection yet, still waiting...")
 			}
 		}
 	}()
@@ -280,7 +280,7 @@ func (mb *MQTTBuilder) DisconnectWithDefaultTimeout() {
 	// Send disconnect packet
 	err := mb.connMgr.Disconnect(ctx)
 	if err != nil {
-		mb.l.Error("Failed to disconnect from MQTT broker", utils.ErrAttr(err))
+		mb.l.Error("failed to disconnect from mqtt broker", utils.ErrAttr(err))
 		return
 	}
 
@@ -295,7 +295,7 @@ func (mb *MQTTBuilder) onConnect(ctx context.Context) func(*autopaho.ConnectionM
 		// Subscribe to all registered subscriptions at once
 		go func() {
 			if err := mb.wrappedClient.SubscribeAll(ctx); err != nil {
-				mb.l.Error("Failed to subscribe to topics", utils.ErrAttr(err))
+				mb.l.Error("failed to subscribe to topics", utils.ErrAttr(err))
 			}
 		}()
 	}
@@ -303,7 +303,7 @@ func (mb *MQTTBuilder) onConnect(ctx context.Context) func(*autopaho.ConnectionM
 
 // onConnectionError is called when the client fails to connect to the broker.
 func (mb *MQTTBuilder) onConnectionError(err error) {
-	mb.l.Warn("Failed to connect to MQTT broker", utils.ErrAttr(err))
+	mb.l.Warn("failed to connect to mqtt broker", utils.ErrAttr(err))
 }
 
 // onConnectionDown is called when an active connection to the broker is lost.

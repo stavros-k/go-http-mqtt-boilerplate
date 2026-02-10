@@ -75,10 +75,10 @@ func (c *MQTTClient) Publish(ctx context.Context, operationID string, actualTopi
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			log.Warn("Publish still pending")
+			log.Warn("publish still pending")
 			return errors.New("publish timeout, might complete later if reconnecting")
 		}
-		log.Error("Publish failed", utils.ErrAttr(err))
+		log.Error("publish failed", utils.ErrAttr(err))
 		return err
 	}
 
@@ -140,7 +140,7 @@ func newAutopahoConnection(ctx context.Context, l *slog.Logger, opts *MQTTClient
 		slog.String("broker", opts.BrokerURL),
 		slog.String("clientID", opts.ClientID),
 	)
-	logger.Info("Creating new MQTT client with autopaho")
+	logger.Info("creating new mqtt client with autopaho")
 
 	// Parse broker URL
 	brokerURL, err := url.Parse(opts.BrokerURL)
@@ -160,7 +160,7 @@ func newAutopahoConnection(ctx context.Context, l *slog.Logger, opts *MQTTClient
 		ClientConfig: paho.ClientConfig{
 			ClientID:      opts.ClientID,
 			Router:        mb.router,
-			OnClientError: func(err error) { logger.Error("Client error", utils.ErrAttr(err)) },
+			OnClientError: func(err error) { logger.Error("client error", utils.ErrAttr(err)) },
 		},
 	}
 

@@ -103,7 +103,7 @@ func main() {
 
 	go func() {
 		if err := mb.Connect(sigCtx); err != nil {
-			logger.Error("Failed to connect to MQTT broker", utils.ErrAttr(err))
+			logger.Error("failed to connect to mqtt broker", utils.ErrAttr(err))
 		}
 	}()
 
@@ -113,10 +113,10 @@ func main() {
 	fatalIfErr(logger, err)
 
 	go func() {
-		logger.Info("MQTT broker listening", slog.String("address", mqttAddr))
+		logger.Info("mqtt broker listening", slog.String("address", mqttAddr))
 
 		if err := mqttBroker.Serve(); err != nil {
-			logger.Error("MQTT broker failed", utils.ErrAttr(err))
+			logger.Error("mqtt broker failed", utils.ErrAttr(err))
 			sigCancel()
 		}
 	}()

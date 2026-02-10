@@ -89,7 +89,7 @@ func (s *Handler) RegisterTemperatureSubscribe(mb *mqtt.MQTTBuilder) {
 func (s *Handler) handleTemperature(msg *paho.Publish) {
 	var reading types.TemperatureReading
 	if err := json.Unmarshal(msg.Payload, &reading); err != nil {
-		s.l.Error("Failed to unmarshal temperature reading", slog.String("topic", msg.Topic), utils.ErrAttr(err))
+		s.l.Error("failed to unmarshal temperature reading", slog.String("topic", msg.Topic), utils.ErrAttr(err))
 
 		return
 	}
@@ -196,7 +196,7 @@ func (s *Handler) RegisterSensorTelemetrySubscribe(mb *mqtt.MQTTBuilder) {
 func (s *Handler) handleSensorTelemetry(msg *paho.Publish) {
 	var telemetry types.SensorTelemetry
 	if err := json.Unmarshal(msg.Payload, &telemetry); err != nil {
-		s.l.Error("Failed to unmarshal sensor telemetry", slog.String("topic", msg.Topic), utils.ErrAttr(err))
+		s.l.Error("failed to unmarshal sensor telemetry", slog.String("topic", msg.Topic), utils.ErrAttr(err))
 
 		return
 	}
