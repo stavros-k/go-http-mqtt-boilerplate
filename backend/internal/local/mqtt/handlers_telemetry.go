@@ -89,12 +89,12 @@ func (s *Handler) RegisterTemperatureSubscribe(mb *mqtt.MQTTBuilder) {
 func (s *Handler) handleTemperature(msg *paho.Publish) {
 	var reading types.TemperatureReading
 	if err := json.Unmarshal(msg.Payload, &reading); err != nil {
-		s.l.Error("Failed to unmarshal temperature reading", slog.String("topic", msg.Topic), utils.ErrAttr(err))
+		s.l.Error("failed to unmarshal temperature reading", slog.String("topic", msg.Topic), utils.ErrAttr(err))
 
 		return
 	}
 
-	s.l.Info("Received temperature reading", slog.String("deviceID", reading.DeviceID), slog.Float64("temperature", reading.Temperature), slog.String("unit", reading.Unit), slog.Time("timestamp", reading.Timestamp))
+	s.l.Info("received temperature reading", slog.String("deviceID", reading.DeviceID), slog.Float64("temperature", reading.Temperature), slog.String("unit", reading.Unit), slog.Time("timestamp", reading.Timestamp))
 
 	// Process the reading (e.g., store in database, trigger alerts, etc.)
 	// TODO: Add your business logic here
@@ -196,12 +196,12 @@ func (s *Handler) RegisterSensorTelemetrySubscribe(mb *mqtt.MQTTBuilder) {
 func (s *Handler) handleSensorTelemetry(msg *paho.Publish) {
 	var telemetry types.SensorTelemetry
 	if err := json.Unmarshal(msg.Payload, &telemetry); err != nil {
-		s.l.Error("Failed to unmarshal sensor telemetry", slog.String("topic", msg.Topic), utils.ErrAttr(err))
+		s.l.Error("failed to unmarshal sensor telemetry", slog.String("topic", msg.Topic), utils.ErrAttr(err))
 
 		return
 	}
 
-	s.l.Info("Received sensor telemetry", slog.String("deviceID", telemetry.DeviceID), slog.String("sensorType", telemetry.SensorType), slog.Float64("value", telemetry.Value), slog.String("unit", telemetry.Unit), slog.Int("quality", telemetry.Quality))
+	s.l.Info("received sensor telemetry", slog.String("deviceID", telemetry.DeviceID), slog.String("sensorType", telemetry.SensorType), slog.Float64("value", telemetry.Value), slog.String("unit", telemetry.Unit), slog.Int("quality", telemetry.Quality))
 
 	// Process the telemetry (e.g., store in database, trigger alerts, etc.)
 	// TODO: Add your business logic here

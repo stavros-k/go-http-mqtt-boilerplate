@@ -65,7 +65,7 @@ func newPostgresMigrator(l *slog.Logger, connStr string, fs embed.FS, migrationD
 
 // Migrate runs migrations on the PostgreSQL database.
 func (m *postgresMigrator) Migrate() error {
-	m.l.Info("Migrating database")
+	m.l.Info("migrating database")
 
 	if err := m.db.Migrate(); err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
@@ -78,7 +78,7 @@ func (m *postgresMigrator) Migrate() error {
 func (m *postgresMigrator) DumpSchema(filePath string) error {
 	m.db.SchemaFile = filePath
 
-	m.l.Info("Dumping schema", slog.String("file", filePath))
+	m.l.Info("dumping schema", slog.String("file", filePath))
 
 	if err := m.db.DumpSchema(); err != nil {
 		return fmt.Errorf("failed to dump schema: %w", err)

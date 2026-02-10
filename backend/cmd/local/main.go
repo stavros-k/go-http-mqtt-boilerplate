@@ -9,10 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	mqttbroker "github.com/mochi-mqtt/server/v2"
-	"github.com/mochi-mqtt/server/v2/hooks/auth"
-	"github.com/mochi-mqtt/server/v2/listeners"
-
 	"http-mqtt-boilerplate/backend/internal/config"
 	localapi "http-mqtt-boilerplate/backend/internal/local/api"
 	localdb "http-mqtt-boilerplate/backend/internal/local/gen"
@@ -103,21 +99,7 @@ func main() {
 
 	go func() {
 		if err := mb.Connect(sigCtx); err != nil {
-			logger.Error("Failed to connect to MQTT broker", utils.ErrAttr(err))
-		}
-	}()
-
-	//  MQTT Broker
-	mqttAddr := fmt.Sprintf(":%d", config.MQTTBrokerPort)
-	mqttBroker, err := getMQTTServer(logger, mqttAddr)
-	fatalIfErr(logger, err)
-
-	go func() {
-		logger.Info("MQTT broker listening", slog.String("address", mqttAddr))
-
-		if err := mqttBroker.Serve(); err != nil {
-			logger.Error("MQTT broker failed", utils.ErrAttr(err))
-			sigCancel()
+			logger.Error("failed to connect to mqtt broker", utils.ErrAttr(err))
 		}
 	}()
 
@@ -140,37 +122,12 @@ func main() {
 	logger.Info("disconnecting from MQTT broker...")
 	mb.DisconnectWithDefaultTimeout()
 
-	// Shutdown MQTT broker
-	logger.Info("mqtt broker shutting down...")
-
-	if err := mqttBroker.Close(); err != nil {
-		logger.Error("mqtt broker shutdown failed", utils.ErrAttr(err))
-	}
-
 	logger.Info("server exited gracefully")
-}
-
-func getMQTTServer(l *slog.Logger, addr string) (*mqttbroker.Server, error) {
-	server := mqttbroker.New(&mqttbroker.Options{
-		Logger: l.With(slog.String("component", "mqtt-broker")),
-	})
-	tcp := listeners.NewTCP(listeners.Config{ID: "tcp", Address: addr})
-
-	err := server.AddListener(tcp)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := server.AddHook(new(auth.AllowHook), nil); err != nil {
-		return nil, err
-	}
-
-	return server, nil
 }
 
 // registerHTTPHandlers registers all HTTP handlers.
 func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *localapi.Handler) {
-	l.Info("Registering HTTP handlers...")
+	l.Info("registering http handlers...")
 
 	// Create middleware handler
 	mw := apicommon.NewMiddlewareHandler(l)
@@ -202,12 +159,12 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *localapi.H
 		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
 	})
 
-	l.Info("HTTP handlers registered successfully")
+	l.Info("http handlers registered successfully")
 }
 
 // registerMQTTHandlers registers all MQTT handlers.
 func registerMQTTHandlers(l *slog.Logger, mb *mqtt.MQTTBuilder, h *mqttapi.Handler) {
-	l.Info("Registering MQTT handlers...")
+	l.Info("registering mqtt handlers...")
 	// Telemetry operations
 	h.RegisterTemperaturePublish(mb)
 	h.RegisterTemperatureSubscribe(mb)
@@ -219,7 +176,7 @@ func registerMQTTHandlers(l *slog.Logger, mb *mqtt.MQTTBuilder, h *mqttapi.Handl
 	h.RegisterDeviceCommandSubscribe(mb)
 	h.RegisterDeviceStatusPublish(mb)
 	h.RegisterDeviceStatusSubscribe(mb)
-	l.Info("MQTT handlers registered successfully")
+	l.Info("mqtt handlers registered successfully")
 }
 
 //nolint:ireturn // Returns MetadataCollector interface (OpenAPICollector or NoopCollector)

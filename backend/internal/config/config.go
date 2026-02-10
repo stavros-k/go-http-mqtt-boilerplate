@@ -79,19 +79,17 @@ func New() (*Config, error) {
 	}
 
 	// Build PostgreSQL connection string
-	host := getStringEnv(EnvDBHost, "localhost")
-	port := getIntEnv(EnvDBPort, 5432)
-	dbName := getStringEnv(EnvDBName, "postgres")
-	user := getStringEnv(EnvDBUser, "postgres")
-	password := getStringEnv(EnvDBPass, "postgres")
-	sslmode := getStringEnv(EnvDBSSLMode, "disable")
 
 	dbConnString := fmt.Sprintf(
 		"postgresql://%s:%s@%s/%s?sslmode=%s",
-		url.QueryEscape(user),
-		url.QueryEscape(password),
-		net.JoinHostPort(host, strconv.Itoa(port)),
-		url.PathEscape(dbName), url.QueryEscape(sslmode),
+		url.QueryEscape(getStringEnv(EnvDBUser, "postgres")),
+		url.QueryEscape(getStringEnv(EnvDBPass, "postgres")),
+		net.JoinHostPort(
+			getStringEnv(EnvDBHost, "localhost"),
+			strconv.Itoa(getIntEnv(EnvDBPort, 5432)),
+		),
+		url.PathEscape(getStringEnv(EnvDBName, "postgres")),
+		url.QueryEscape(getStringEnv(EnvDBSSLMode, "disable")),
 	)
 
 	return &Config{

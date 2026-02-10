@@ -82,14 +82,14 @@ func (s *Handler) RegisterDeviceCommandSubscribe(mb *mqtt.MQTTBuilder) {
 func (s *Handler) handleDeviceCommand(msg *paho.Publish) {
 	var command types.DeviceCommand
 	if err := json.Unmarshal(msg.Payload, &command); err != nil {
-		s.l.Error("Failed to unmarshal device command",
+		s.l.Error("failed to unmarshal device command",
 			slog.String("topic", msg.Topic),
 			utils.ErrAttr(err))
 
 		return
 	}
 
-	s.l.Info("Received device command",
+	s.l.Info("received device command",
 		slog.String("deviceID", command.DeviceID),
 		slog.String("command", command.Command),
 		slog.Any("parameters", command.Parameters))
@@ -174,14 +174,14 @@ func (s *Handler) RegisterDeviceStatusSubscribe(mb *mqtt.MQTTBuilder) {
 func (s *Handler) handleDeviceStatus(msg *paho.Publish) {
 	var status types.DeviceStatus
 	if err := json.Unmarshal(msg.Payload, &status); err != nil {
-		s.l.Error("Failed to unmarshal device status",
+		s.l.Error("failed to unmarshal device status",
 			slog.String("topic", msg.Topic),
 			utils.ErrAttr(err))
 
 		return
 	}
 
-	s.l.Info("Received device status",
+	s.l.Info("received device status",
 		slog.String("deviceID", status.DeviceID),
 		slog.String("status", status.Status),
 		slog.Int64("uptime", status.Uptime))

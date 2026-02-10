@@ -244,7 +244,7 @@ func NewOpenAPICollector(l *slog.Logger, opts OpenAPICollectorOptions) (*OpenAPI
 		return nil, fmt.Errorf("failed to extract types: %w", err)
 	}
 
-	l.Info("OpenAPI collector created successfully", slog.Int("types", len(docCollector.types)))
+	l.Info("openapi collector created successfully", slog.Int("types", len(docCollector.types)))
 
 	return docCollector, nil
 }
@@ -339,14 +339,14 @@ func (g *OpenAPICollector) Generate() error {
 
 	g.openapiSpec = string(yamlBytes)
 
-	g.l.Info("OpenAPI spec written", slog.String("file", g.openAPISpecFilePath))
+	g.l.Info("openapi spec written", slog.String("file", g.openAPISpecFilePath))
 
 	// Write docs JSON
 	if err := g.writeDocsJSON(); err != nil {
 		return fmt.Errorf("failed to write docs JSON: %w", err)
 	}
 
-	g.l.Info("API documentation generated")
+	g.l.Info("api documentation generated")
 
 	return nil
 }
@@ -415,7 +415,7 @@ func (g *OpenAPICollector) writeDocsJSON() error {
 		return fmt.Errorf("failed to write docs JSON: %w", err)
 	}
 
-	g.l.Info("API documentation written", slog.String("file", g.docsFilePath))
+	g.l.Info("api documentation written", slog.String("file", g.docsFilePath))
 
 	return nil
 }

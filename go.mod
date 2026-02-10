@@ -1,6 +1,6 @@
 module http-mqtt-boilerplate
 
-go 1.25.6
+go 1.25.7
 
 require (
 	github.com/amacneil/dbmate/v2 v2.29.4
@@ -10,7 +10,6 @@ require (
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
-	github.com/mochi-mqtt/server/v2 v2.7.9
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
 	golang.org/x/text v0.33.0
@@ -72,7 +71,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/rs/xid v1.6.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.6 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
