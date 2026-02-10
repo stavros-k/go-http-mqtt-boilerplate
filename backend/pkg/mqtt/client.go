@@ -43,6 +43,10 @@ func (c *MQTTClient) IsConnected() bool {
 // It does not validate the topic or payload.
 // TODO: Make this easier to work with, passing operationID is a bit awkward and error prone
 func (c *MQTTClient) Publish(ctx context.Context, operationID string, actualTopic string, payload any) error {
+	if c.connMgr == nil {
+		return errors.New("MQTT client not connected - call Connect first")
+	}
+
 	pub, ok := c.builder.publications[operationID]
 	if !ok {
 		return fmt.Errorf("publication not found for operationID %s", operationID)
@@ -83,6 +87,10 @@ func (c *MQTTClient) Publish(ctx context.Context, operationID string, actualTopi
 
 // SubscribeAll subscribes to all registered subscriptions in a single call.
 func (c *MQTTClient) SubscribeAll(ctx context.Context) error {
+	if c.connMgr == nil {
+		return errors.New("MQTT client not connected - call Connect first")
+	}
+
 	if len(c.builder.subscriptions) == 0 {
 		c.l.Info("No subscriptions to subscribe to")
 		return nil

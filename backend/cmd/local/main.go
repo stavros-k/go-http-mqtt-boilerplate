@@ -76,7 +76,7 @@ func main() {
 	rb, err := router.NewRouteBuilder(logger, collector)
 	fatalIfErr(logger, err)
 
-	mb, err := mqtt.NewMQTTBuilder(sigCtx, logger, collector, mqtt.MQTTClientOptions{
+	mb, err := mqtt.NewMQTTBuilder(logger, collector, mqtt.MQTTClientOptions{
 		BrokerURL: config.MQTTBroker,
 		ClientID:  config.MQTTClientID,
 		Username:  config.MQTTUsername,
@@ -102,7 +102,7 @@ func main() {
 	}
 
 	go func() {
-		if err := mb.AwaitConnection(sigCtx); err != nil {
+		if err := mb.Connect(sigCtx); err != nil {
 			logger.Error("Failed to connect to MQTT broker", utils.ErrAttr(err))
 		}
 	}()
