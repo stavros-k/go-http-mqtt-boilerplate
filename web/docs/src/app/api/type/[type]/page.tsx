@@ -1,5 +1,5 @@
 import type { Route } from "next";
-import { TbBrandGolang, TbBrandTypescript, TbFileCode, TbInfoCircle, TbJson } from "react-icons/tb";
+import { TbBrandGolang, TbBrandTypescript, TbFileCode, TbFileText, TbInfoCircle, TbJson } from "react-icons/tb";
 import { BackButton } from "@/components/back-button";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CodeWrapper } from "@/components/code-wrapper";
@@ -134,6 +134,19 @@ export default async function Type(props: PageProps<"/api/type/[type]">) {
                             />
                         ) : (
                             <p className='p-4 text-sm text-text-tertiary'>No JSON schema available for this type.</p>
+                        ),
+                    },
+                    {
+                        title: "YAML Schema",
+                        icon: <TbFileText className='h-8 w-8 text-orange-400' />,
+                        code: data.representations?.yamlSchema ? (
+                            <CodeWrapper
+                                code={data.representations.yamlSchema}
+                                lang='yaml'
+                                label={{ text: type }}
+                            />
+                        ) : (
+                            <p className='p-4 text-sm text-text-tertiary'>No YAML schema available for this type.</p>
                         ),
                     },
                 ]}

@@ -3,14 +3,17 @@ import { BackButton } from "@/components/back-button";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CardBoxWrapper } from "@/components/card-box-wrapper";
 import { CodeWrapper } from "@/components/code-wrapper";
-import { CollapsibleCard } from "@/components/collapsible-group";
 import { Deprecation } from "@/components/deprecation";
+import { ExamplesSection } from "@/components/examples-section";
 import { Group } from "@/components/group";
 import { MQTTTopicHeader } from "@/components/mqtt-topic-header";
 import { getAllMQTTPublications, getTypeJson, type TypeKeys } from "@/data/api";
 
 export function generateStaticParams() {
     const publications = getAllMQTTPublications();
+    if (publications.length === 0) {
+        return [{ operationId: "__no-mqtt-publications__" }];
+    }
     return publications.map((publication) => ({
         operationId: publication.operationID,
     }));
@@ -29,6 +32,19 @@ export default async function MQTTPublicationPage(props: PageProps<"/api/mqtt/pu
     const { operationId } = params;
 
     const allPublications = getAllMQTTPublications();
+
+    // Handle the case where there are no MQTT publications (e.g., cloud API)
+    if (operationId === "__no-mqtt-publications__") {
+        return (
+            <div className='flex-1 overflow-y-auto p-10'>
+                <div className='rounded-lg border border-border-secondary bg-bg-tertiary p-8 text-center'>
+                    <h1 className='mb-2 font-bold text-2xl'>No MQTT Publications Available</h1>
+                    <p className='text-text-secondary'>This API does not include any MQTT publication endpoints.</p>
+                </div>
+            </div>
+        );
+    }
+
     const publication = allPublications.find((pub) => pub.operationID === operationId);
 
     if (!publication) {
@@ -122,24 +138,7 @@ export default async function MQTTPublicationPage(props: PageProps<"/api/mqtt/pu
             </CardBoxWrapper>
 
             {/* Examples */}
-            {publication.examples && Object.keys(publication.examples).length > 0 && (
-                <CardBoxWrapper title='Examples'>
-                    <div className='space-y-3'>
-                        {Object.entries(publication.examples).map(([exampleKey, exampleValue]) => (
-                            <CollapsibleCard
-                                key={exampleKey}
-                                title={exampleKey}
-                                defaultOpen={Object.keys(publication.examples).length === 1}>
-                                <CodeWrapper
-                                    label={{ text: "Example" }}
-                                    code={exampleValue}
-                                    lang='json'
-                                />
-                            </CollapsibleCard>
-                        ))}
-                    </div>
-                </CardBoxWrapper>
-            )}
+            <ExamplesSection examples={publication.examples} />
         </div>
     );
 }
