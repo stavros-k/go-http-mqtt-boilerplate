@@ -25,7 +25,7 @@ const (
 	ReadTimeout       = 30 * time.Second
 	WriteTimeout      = 30 * time.Second
 	IdleTimeout       = 120 * time.Second
-	ShutdownTimeout   = 30 * time.Second
+	ShutdownTimeout   = 10 * time.Second
 )
 
 const zeroUUID = "00000000-0000-0000-0000-000000000000"

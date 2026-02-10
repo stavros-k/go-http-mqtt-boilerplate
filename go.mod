@@ -5,7 +5,7 @@ go 1.25.6
 require (
 	github.com/amacneil/dbmate/v2 v2.29.4
 	github.com/coder/guts v1.6.3
-	github.com/eclipse/paho.mqtt.golang v1.5.1
+	github.com/eclipse/paho.golang v0.23.0
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/google/uuid v1.6.0

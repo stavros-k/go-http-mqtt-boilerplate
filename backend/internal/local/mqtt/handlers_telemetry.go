@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	pahomqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.golang/paho"
 
 	"http-mqtt-boilerplate/backend/internal/local/mqtt/types"
 	"http-mqtt-boilerplate/backend/pkg/mqtt"
@@ -86,10 +86,10 @@ func (s *Handler) RegisterTemperatureSubscribe(mb *mqtt.MQTTBuilder) {
 }
 
 // handleTemperature handles incoming temperature readings.
-func (s *Handler) handleTemperature(client pahomqtt.Client, msg pahomqtt.Message) {
+func (s *Handler) handleTemperature(msg *paho.Publish) {
 	var reading types.TemperatureReading
-	if err := json.Unmarshal(msg.Payload(), &reading); err != nil {
-		s.l.Error("Failed to unmarshal temperature reading", slog.String("topic", msg.Topic()), utils.ErrAttr(err))
+	if err := json.Unmarshal(msg.Payload, &reading); err != nil {
+		s.l.Error("Failed to unmarshal temperature reading", slog.String("topic", msg.Topic), utils.ErrAttr(err))
 
 		return
 	}
@@ -193,10 +193,10 @@ func (s *Handler) RegisterSensorTelemetrySubscribe(mb *mqtt.MQTTBuilder) {
 }
 
 // handleSensorTelemetry handles incoming sensor telemetry data.
-func (s *Handler) handleSensorTelemetry(client pahomqtt.Client, msg pahomqtt.Message) {
+func (s *Handler) handleSensorTelemetry(msg *paho.Publish) {
 	var telemetry types.SensorTelemetry
-	if err := json.Unmarshal(msg.Payload(), &telemetry); err != nil {
-		s.l.Error("Failed to unmarshal sensor telemetry", slog.String("topic", msg.Topic()), utils.ErrAttr(err))
+	if err := json.Unmarshal(msg.Payload, &telemetry); err != nil {
+		s.l.Error("Failed to unmarshal sensor telemetry", slog.String("topic", msg.Topic), utils.ErrAttr(err))
 
 		return
 	}

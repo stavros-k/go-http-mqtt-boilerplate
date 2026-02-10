@@ -1,7 +1,7 @@
 package mqtt
 
 import (
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.golang/paho"
 )
 
 // QoS represents MQTT quality of service levels.
@@ -48,7 +48,7 @@ type SubscriptionSpec struct {
 	Deprecated      string              // Deprecated contains an optional deprecation message.
 	TopicParameters []TopicParameter    // TopicParameters describes the parameters in the topic pattern (e.g., {deviceID}).
 	MessageType     any                 // Expected Go type of messages received on this subscription.
-	Handler         mqtt.MessageHandler // Handler is the function that will be called when a message is received.
+	Handler         paho.MessageHandler // Handler is the function that will be called when a message is received.
 	QoS             QoS                 // QoS is the quality of service level for this subscription.
 	Examples        map[string]any      // Examples contains named examples of messages that may be received.
 }
