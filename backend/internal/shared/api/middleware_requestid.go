@@ -1,9 +1,8 @@
 package apicommon
 
 import (
+	"http-mqtt-boilerplate/backend/pkg/utils"
 	"net/http"
-
-	"github.com/google/uuid"
 )
 
 // RequestIDMiddleware extracts the request ID from the request header or generates a new one
@@ -13,7 +12,7 @@ func (m *MiddlewareHandler) RequestIDMiddleware(next http.Handler) http.Handler 
 		// Get or generate request ID
 		requestID := r.Header.Get(RequestIDHeader)
 		if requestID == "" {
-			requestID = uuid.New().String()
+			requestID = utils.NewUUID()
 		}
 
 		w.Header().Set(RequestIDHeader, requestID)
