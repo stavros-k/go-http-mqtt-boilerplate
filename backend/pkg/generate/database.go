@@ -82,7 +82,7 @@ func (g *OpenAPICollector) GenerateDatabaseSchema(deployment string, schemaOutpu
 
 	schema := string(bytes.TrimSpace(schemaBytes))
 
-	g.l.Info("Database schema generated", slog.String("file", schemaOutputPath), slog.String("deployment", deployment))
+	g.l.Info("database schema generated", slog.String("file", schemaOutputPath), slog.String("deployment", deployment))
 
 	return schema, nil
 }

@@ -106,7 +106,7 @@ func main() {
 
 // registerHTTPHandlers registers all HTTP handlers.
 func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *cloudapi.Handler) {
-	l.Info("Registering HTTP handlers...")
+	l.Info("registering http handlers...")
 
 	// Create middleware handler
 	mw := apicommon.NewMiddlewareHandler(l)
@@ -131,7 +131,7 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *cloudapi.H
 		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
 	})
 
-	l.Info("HTTP handlers registered successfully")
+	l.Info("http handlers registered successfully")
 }
 
 //nolint:ireturn // Returns MetadataCollector interface (OpenAPICollector or NoopCollector)

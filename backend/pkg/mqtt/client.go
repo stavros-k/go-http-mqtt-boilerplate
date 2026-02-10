@@ -92,7 +92,7 @@ func (c *MQTTClient) SubscribeAll(ctx context.Context) error {
 	}
 
 	if len(c.builder.subscriptions) == 0 {
-		c.l.Info("No subscriptions to subscribe to")
+		c.l.Info("no subscriptions to subscribe to")
 		return nil
 	}
 
@@ -117,10 +117,10 @@ func (c *MQTTClient) SubscribeAll(ctx context.Context) error {
 		return err
 	}
 	for _, sub := range subscriptions {
-		c.l.Info("Subscribed to topic", slog.String("topic", sub.Topic), slog.Int("qos", int(sub.QoS)))
+		c.l.Info("subscribed to topic", slog.String("topic", sub.Topic), slog.Int("qos", int(sub.QoS)))
 	}
 
-	c.l.Info("Subscribed to all topics successfully", slog.Int("count", len(subscriptions)))
+	c.l.Info("subscribed to all topics successfully", slog.Int("count", len(subscriptions)))
 
 	return nil
 }

@@ -274,7 +274,7 @@ func (rb *RouteBuilder) add(path string, spec RouteSpec) error {
 	rb.router.Method(spec.method, spec.fullPath, spec.Handler)
 	rb.operationIDs[spec.OperationID] = struct{}{}
 
-	rb.l.Info("Registered route", slog.String("method", spec.method), slog.String("path", spec.fullPath), slog.String("operationID", spec.OperationID))
+	rb.l.Info("registered route", slog.String("method", spec.method), slog.String("path", spec.fullPath), slog.String("operationID", spec.OperationID))
 
 	return nil
 }

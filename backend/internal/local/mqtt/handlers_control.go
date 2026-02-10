@@ -89,7 +89,7 @@ func (s *Handler) handleDeviceCommand(msg *paho.Publish) {
 		return
 	}
 
-	s.l.Info("Received device command",
+	s.l.Info("received device command",
 		slog.String("deviceID", command.DeviceID),
 		slog.String("command", command.Command),
 		slog.Any("parameters", command.Parameters))
@@ -181,7 +181,7 @@ func (s *Handler) handleDeviceStatus(msg *paho.Publish) {
 		return
 	}
 
-	s.l.Info("Received device status",
+	s.l.Info("received device status",
 		slog.String("deviceID", status.DeviceID),
 		slog.String("status", status.Status),
 		slog.Int64("uptime", status.Uptime))

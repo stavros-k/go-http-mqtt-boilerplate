@@ -170,7 +170,7 @@ func getMQTTServer(l *slog.Logger, addr string) (*mqttbroker.Server, error) {
 
 // registerHTTPHandlers registers all HTTP handlers.
 func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *localapi.Handler) {
-	l.Info("Registering HTTP handlers...")
+	l.Info("registering http handlers...")
 
 	// Create middleware handler
 	mw := apicommon.NewMiddlewareHandler(l)
@@ -202,12 +202,12 @@ func registerHTTPHandlers(l *slog.Logger, rb *router.RouteBuilder, h *localapi.H
 		http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
 	})
 
-	l.Info("HTTP handlers registered successfully")
+	l.Info("http handlers registered successfully")
 }
 
 // registerMQTTHandlers registers all MQTT handlers.
 func registerMQTTHandlers(l *slog.Logger, mb *mqtt.MQTTBuilder, h *mqttapi.Handler) {
-	l.Info("Registering MQTT handlers...")
+	l.Info("registering mqtt handlers...")
 	// Telemetry operations
 	h.RegisterTemperaturePublish(mb)
 	h.RegisterTemperatureSubscribe(mb)
@@ -219,7 +219,7 @@ func registerMQTTHandlers(l *slog.Logger, mb *mqtt.MQTTBuilder, h *mqttapi.Handl
 	h.RegisterDeviceCommandSubscribe(mb)
 	h.RegisterDeviceStatusPublish(mb)
 	h.RegisterDeviceStatusSubscribe(mb)
-	l.Info("MQTT handlers registered successfully")
+	l.Info("mqtt handlers registered successfully")
 }
 
 //nolint:ireturn // Returns MetadataCollector interface (OpenAPICollector or NoopCollector)

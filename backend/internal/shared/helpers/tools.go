@@ -28,7 +28,7 @@ func GetLogger(config *config.Config) *slog.Logger {
 }
 
 func RunMigrations(l *slog.Logger, connString string, dirs ...string) error {
-	l.Info("Running database migrations")
+	l.Info("running database migrations")
 
 	// Create migrator with shared + cloud migration directories
 	mig, err := migrator.New(l, connString, migrations.GetFS(), dirs...)
@@ -41,7 +41,7 @@ func RunMigrations(l *slog.Logger, connString string, dirs ...string) error {
 		return fmt.Errorf("failed to migrate: %w", err)
 	}
 
-	l.Info("Database migrations completed successfully")
+	l.Info("database migrations completed successfully")
 
 	return nil
 }

@@ -94,7 +94,7 @@ func (s *Handler) handleTemperature(msg *paho.Publish) {
 		return
 	}
 
-	s.l.Info("Received temperature reading", slog.String("deviceID", reading.DeviceID), slog.Float64("temperature", reading.Temperature), slog.String("unit", reading.Unit), slog.Time("timestamp", reading.Timestamp))
+	s.l.Info("received temperature reading", slog.String("deviceID", reading.DeviceID), slog.Float64("temperature", reading.Temperature), slog.String("unit", reading.Unit), slog.Time("timestamp", reading.Timestamp))
 
 	// Process the reading (e.g., store in database, trigger alerts, etc.)
 	// TODO: Add your business logic here
@@ -201,7 +201,7 @@ func (s *Handler) handleSensorTelemetry(msg *paho.Publish) {
 		return
 	}
 
-	s.l.Info("Received sensor telemetry", slog.String("deviceID", telemetry.DeviceID), slog.String("sensorType", telemetry.SensorType), slog.Float64("value", telemetry.Value), slog.String("unit", telemetry.Unit), slog.Int("quality", telemetry.Quality))
+	s.l.Info("received sensor telemetry", slog.String("deviceID", telemetry.DeviceID), slog.String("sensorType", telemetry.SensorType), slog.Float64("value", telemetry.Value), slog.String("unit", telemetry.Unit), slog.Int("quality", telemetry.Quality))
 
 	// Process the telemetry (e.g., store in database, trigger alerts, etc.)
 	// TODO: Add your business logic here

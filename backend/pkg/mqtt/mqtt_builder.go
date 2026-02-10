@@ -128,7 +128,7 @@ func (mb *MQTTBuilder) RegisterPublish(topic string, spec PublicationSpec) error
 	mb.operationIDs[spec.OperationID] = struct{}{}
 	mb.publications[spec.OperationID] = &spec
 
-	mb.l.Info("Registered MQTT publication", slog.String("operationID", spec.OperationID), slog.String("topic", topic), slog.String("group", spec.Group))
+	mb.l.Info("registered mqtt publication", slog.String("operationID", spec.OperationID), slog.String("topic", topic), slog.String("group", spec.Group))
 
 	return nil
 }
@@ -201,7 +201,7 @@ func (mb *MQTTBuilder) RegisterSubscribe(topic string, spec SubscriptionSpec) er
 	// Register handler with the router
 	mb.router.RegisterHandler(mqttTopic, spec.Handler)
 
-	mb.l.Info("Registered MQTT subscription", slog.String("operationID", spec.OperationID), slog.String("topic", topic), slog.String("group", spec.Group))
+	mb.l.Info("registered mqtt subscription", slog.String("operationID", spec.OperationID), slog.String("topic", topic), slog.String("group", spec.Group))
 
 	return nil
 }
@@ -229,7 +229,7 @@ func (mb *MQTTBuilder) Connect(ctx context.Context) error {
 	mb.connMgr = connMgr
 	mb.wrappedClient.connMgr = connMgr
 
-	mb.l.Info("Connecting to MQTT broker... Will wait indefinitely for connection to complete")
+	mb.l.Info("connecting to mqtt broker... will wait indefinitely for connection to complete")
 
 	done := make(chan struct{})
 	defer close(done)
@@ -261,7 +261,7 @@ func (mb *MQTTBuilder) Connect(ctx context.Context) error {
 		return fmt.Errorf("failed to connect to MQTT broker: %w", err)
 	}
 
-	mb.l.Info("Connection to MQTT broker established")
+	mb.l.Info("connection to mqtt broker established")
 
 	return nil
 }
@@ -272,7 +272,7 @@ func (mb *MQTTBuilder) DisconnectWithDefaultTimeout() {
 		return
 	}
 
-	mb.l.Info("Disconnecting from MQTT broker...")
+	mb.l.Info("disconnecting from mqtt broker...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), disconnectTimeout)
 	defer cancel()
@@ -284,13 +284,13 @@ func (mb *MQTTBuilder) DisconnectWithDefaultTimeout() {
 		return
 	}
 
-	mb.l.Info("Disconnected from MQTT broker")
+	mb.l.Info("disconnected from mqtt broker")
 }
 
 // onConnect is called when the client successfully connects or reconnects to the broker.
 func (mb *MQTTBuilder) onConnect(ctx context.Context) func(*autopaho.ConnectionManager, *paho.Connack) {
 	return func(_ *autopaho.ConnectionManager, _ *paho.Connack) {
-		mb.l.Info("Connected to MQTT broker, subscribing to topics", slog.Int("subscriptionCount", len(mb.subscriptions)))
+		mb.l.Info("connected to mqtt broker, subscribing to topics", slog.Int("subscriptionCount", len(mb.subscriptions)))
 		mb.connected.Store(true)
 		// Subscribe to all registered subscriptions at once
 		go func() {
