@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:18
     container_name: go-http-mqtt-postgres
     environment:
       POSTGRES_USER: postgres
@@ -9,12 +9,36 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - postgres_data:/var/lib/postgresql
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: go-http-mqtt-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    configs:
+      - source: mosquitto_config
+        target: /mosquitto/config/mosquitto.conf
+
+configs:
+  mosquitto_config:
+    content: |
+      listener 1883
+      protocol mqtt
+
+      listener 9001
+      protocol websockets
+
+      allow_anonymous true
+
+      log_dest stdout
+      log_type error
+      log_type warning
+      log_type notice
+      log_type information
+
+      connection_messages true
 
 volumes:
   postgres_data:

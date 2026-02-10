@@ -9,10 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	mqttbroker "github.com/mochi-mqtt/server/v2"
-	"github.com/mochi-mqtt/server/v2/hooks/auth"
-	"github.com/mochi-mqtt/server/v2/listeners"
-
 	"http-mqtt-boilerplate/backend/internal/config"
 	localapi "http-mqtt-boilerplate/backend/internal/local/api"
 	localdb "http-mqtt-boilerplate/backend/internal/local/gen"
@@ -107,20 +103,6 @@ func main() {
 		}
 	}()
 
-	//  MQTT Broker
-	mqttAddr := fmt.Sprintf(":%d", config.MQTTBrokerPort)
-	mqttBroker, err := getMQTTServer(logger, mqttAddr)
-	fatalIfErr(logger, err)
-
-	go func() {
-		logger.Info("mqtt broker listening", slog.String("address", mqttAddr))
-
-		if err := mqttBroker.Serve(); err != nil {
-			logger.Error("mqtt broker failed", utils.ErrAttr(err))
-			sigCancel()
-		}
-	}()
-
 	// HTTP Server
 	httpAddr := fmt.Sprintf(":%d", config.Port)
 	httpServer := apicommon.NewHTTPServer(logger, httpAddr, rb.Router())
@@ -140,32 +122,7 @@ func main() {
 	logger.Info("disconnecting from MQTT broker...")
 	mb.DisconnectWithDefaultTimeout()
 
-	// Shutdown MQTT broker
-	logger.Info("mqtt broker shutting down...")
-
-	if err := mqttBroker.Close(); err != nil {
-		logger.Error("mqtt broker shutdown failed", utils.ErrAttr(err))
-	}
-
 	logger.Info("server exited gracefully")
-}
-
-func getMQTTServer(l *slog.Logger, addr string) (*mqttbroker.Server, error) {
-	server := mqttbroker.New(&mqttbroker.Options{
-		Logger: l.With(slog.String("component", "mqtt-broker")),
-	})
-	tcp := listeners.NewTCP(listeners.Config{ID: "tcp", Address: addr})
-
-	err := server.AddListener(tcp)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := server.AddHook(new(auth.AllowHook), nil); err != nil {
-		return nil, err
-	}
-
-	return server, nil
 }
 
 // registerHTTPHandlers registers all HTTP handlers.
