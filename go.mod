@@ -1,6 +1,6 @@
 module http-mqtt-boilerplate
 
-go 1.25.6
+go 1.25.7
 
 require (
 	github.com/amacneil/dbmate/v2 v2.29.4
