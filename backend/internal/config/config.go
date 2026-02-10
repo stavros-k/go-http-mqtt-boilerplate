@@ -10,31 +10,38 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-type EnvKey string
+type envKey string
 
 const (
-	EnvGenerate EnvKey = "GENERATE"
+	envGenerate envKey = "GENERATE"
 
-	EnvPort      EnvKey = "PORT"
-	EnvDataDir   EnvKey = "DATA_DIR"
-	EnvLogLevel  EnvKey = "LOG_LEVEL"
-	EnvLogToFile EnvKey = "LOG_TO_FILE"
+	envPort      envKey = "PORT"
+	envDataDir   envKey = "DATA_DIR"
+	envLogLevel  envKey = "LOG_LEVEL"
+	envLogToFile envKey = "LOG_TO_FILE"
 
-	EnvDBHost    EnvKey = "DB_HOST"
-	EnvDBPort    EnvKey = "DB_PORT"
-	EnvDBName    EnvKey = "DB_NAME"
-	EnvDBUser    EnvKey = "DB_USER"
-	EnvDBPass    EnvKey = "DB_PASSWORD"
-	EnvDBSSLMode EnvKey = "DB_SSLMODE"
+	envDBHost    envKey = "DB_HOST"
+	envDBPort    envKey = "DB_PORT"
+	envDBName    envKey = "DB_NAME"
+	envDBUser    envKey = "DB_USER"
+	envDBPass    envKey = "DB_PASSWORD"
+	envDBSSLMode envKey = "DB_SSLMODE"
 
-	EnvMQTTBrokerPort EnvKey = "MQTT_SERVER_PORT"
+	envMQTTBroker   envKey = "MQTT_BROKER"
+	envMQTTClientID envKey = "MQTT_CLIENT_ID"
+	envMQTTUsername envKey = "MQTT_USERNAME"
+	envMQTTPassword envKey = "MQTT_PASSWORD"
+)
 
-	EnvMQTTBroker   EnvKey = "MQTT_BROKER"
-	EnvMQTTClientID EnvKey = "MQTT_CLIENT_ID"
-	EnvMQTTUsername EnvKey = "MQTT_USERNAME"
-	EnvMQTTPassword EnvKey = "MQTT_PASSWORD"
+const (
+	// Log rotation settings
+	logMaxSize    = 500 // megabytes per log file
+	logMaxBackups = 100 // number of old log files to retain
+	logMaxAge     = 7   // days to retain old log files
 )
 
 type Config struct {
@@ -57,7 +64,7 @@ type Config struct {
 
 func New() (*Config, error) {
 	// Get data directory
-	dataDir := getStringEnv(EnvDataDir, "data")
+	dataDir := getStringEnv(envDataDir, "data")
 
 	// Ensure data directory exists
 	if err := os.MkdirAll(dataDir, 0o750); err != nil {
@@ -69,41 +76,44 @@ func New() (*Config, error) {
 
 	var logOutput io.Writer = os.Stdout
 
-	if getBoolEnv(EnvLogToFile, false) {
-		f, err := os.OpenFile(logPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open log file: %w", err)
+	if getBoolEnv(envLogToFile, false) {
+		logOutput = &lumberjack.Logger{
+			Filename:   logPath,
+			MaxSize:    logMaxSize,
+			MaxBackups: logMaxBackups,
+			MaxAge:     logMaxAge,
+			Compress:   true,
 		}
-
-		logOutput = f
 	}
 
 	// Build PostgreSQL connection string
 
 	dbConnString := fmt.Sprintf(
 		"postgresql://%s:%s@%s/%s?sslmode=%s",
-		url.QueryEscape(getStringEnv(EnvDBUser, "postgres")),
-		url.QueryEscape(getStringEnv(EnvDBPass, "postgres")),
+		url.QueryEscape(getStringEnv(envDBUser, "postgres")),
+		url.QueryEscape(getStringEnv(envDBPass, "postgres")),
 		net.JoinHostPort(
-			getStringEnv(EnvDBHost, "localhost"),
-			strconv.Itoa(getIntEnv(EnvDBPort, 5432)),
+			getStringEnv(envDBHost, "localhost"),
+			strconv.Itoa(getIntEnv(envDBPort, 5432)),
 		),
-		url.PathEscape(getStringEnv(EnvDBName, "postgres")),
-		url.QueryEscape(getStringEnv(EnvDBSSLMode, "disable")),
+		url.PathEscape(getStringEnv(envDBName, "postgres")),
+		url.QueryEscape(getStringEnv(envDBSSLMode, "disable")),
 	)
 
 	return &Config{
-		Port:           getIntEnv(EnvPort, 8080),
-		Generate:       getBoolEnv(EnvGenerate, false),
-		DataDir:        dataDir,
-		Database:       dbConnString,
-		LogLevel:       getLogLevelEnv(EnvLogLevel, slog.LevelInfo),
-		LogOutput:      logOutput,
-		MQTTBrokerPort: getIntEnv(EnvMQTTBrokerPort, 1883),
-		MQTTBroker:     getStringEnv(EnvMQTTBroker, "tcp://127.0.0.1:1883"),
-		MQTTClientID:   getStringEnv(EnvMQTTClientID, "http-mqtt-boilerplate-server"),
-		MQTTUsername:   getStringEnv(EnvMQTTUsername, ""),
-		MQTTPassword:   getStringEnv(EnvMQTTPassword, ""),
+		Generate: getBoolEnv(envGenerate, false),
+
+		Port:     getIntEnv(envPort, 8080),
+		DataDir:  dataDir,
+		Database: dbConnString,
+
+		LogLevel:  getLogLevelEnv(envLogLevel, slog.LevelInfo),
+		LogOutput: logOutput,
+
+		MQTTBroker:   getStringEnv(envMQTTBroker, "tcp://127.0.0.1:1883"),
+		MQTTClientID: getStringEnv(envMQTTClientID, "http-mqtt-boilerplate-server"),
+		MQTTUsername: getStringEnv(envMQTTUsername, ""),
+		MQTTPassword: getStringEnv(envMQTTPassword, ""),
 	}, nil
 }
 
@@ -114,10 +124,14 @@ func (c *Config) Close() error {
 		}
 	}
 
+	if l, ok := c.LogOutput.(*lumberjack.Logger); ok {
+		return l.Close()
+	}
+
 	return nil
 }
 
-func getStringEnv(key EnvKey, defaultVal string) string {
+func getStringEnv(key envKey, defaultVal string) string {
 	val, exists := os.LookupEnv(string(key))
 	if !exists {
 		return defaultVal
@@ -126,7 +140,7 @@ func getStringEnv(key EnvKey, defaultVal string) string {
 	return val
 }
 
-func getBoolEnv(key EnvKey, defaultVal bool) bool {
+func getBoolEnv(key envKey, defaultVal bool) bool {
 	val, exists := os.LookupEnv(string(key))
 	if !exists {
 		return defaultVal
@@ -141,7 +155,7 @@ func getBoolEnv(key EnvKey, defaultVal bool) bool {
 	}
 }
 
-func getIntEnv(key EnvKey, defaultVal int) int {
+func getIntEnv(key envKey, defaultVal int) int {
 	val, exists := os.LookupEnv(string(key))
 	if !exists {
 		return defaultVal
@@ -154,7 +168,7 @@ func getIntEnv(key EnvKey, defaultVal int) int {
 	return defaultVal
 }
 
-func getLogLevelEnv(key EnvKey, defaultVal slog.Leveler) slog.Leveler {
+func getLogLevelEnv(key envKey, defaultVal slog.Leveler) slog.Leveler {
 	val, exists := os.LookupEnv(string(key))
 	if !exists {
 		return defaultVal

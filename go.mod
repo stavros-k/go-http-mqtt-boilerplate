@@ -14,6 +14,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
 	golang.org/x/text v0.33.0
 	golang.org/x/tools v0.41.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
