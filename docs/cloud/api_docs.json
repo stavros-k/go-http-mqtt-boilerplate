@@ -1,0 +1,428 @@
+{
+  "info": {
+    "title": "Cloud API",
+    "version": "vdev (72d099a-dirty)",
+    "description": "Cloud API Documentation",
+    "servers": [
+      {
+        "url": "http://localhost:8080",
+        "description": "Local server"
+      }
+    ]
+  },
+  "types": {
+    "AliasOfCustomID": {
+      "name": "AliasOfCustomID",
+      "kind": "alias",
+      "description": "",
+      "deprecated": "",
+      "fields": null,
+      "enumValues": null,
+      "references": [
+        "CustomID"
+      ],
+      "referencedBy": null,
+      "usedBy": null,
+      "representations": {
+        "json": "",
+        "jsonSchema": "{\n  \"allOf\": [\n    {\n      \"$ref\": \"#/components/schemas/CustomID\"\n    }\n  ]\n}",
+        "yamlSchema": "allOf:\n    - $ref: '#/components/schemas/CustomID'\n",
+        "go": "type AliasOfCustomID CustomID\n",
+        "ts": "type AliasOfCustomID = string;\n"
+      },
+      "usedByHTTP": false,
+      "usedByMQTT": false,
+      "underlyingType": {
+        "kind": "reference",
+        "type": "CustomID",
+        "format": "",
+        "required": false,
+        "nullable": false,
+        "itemsType": null,
+        "additionalProperties": null,
+        "mapKeyType": null
+      }
+    },
+    "CustomID": {
+      "name": "CustomID",
+      "kind": "alias",
+      "description": "",
+      "deprecated": "",
+      "fields": null,
+      "enumValues": null,
+      "references": [],
+      "referencedBy": [
+        "AliasOfCustomID"
+      ],
+      "usedBy": null,
+      "representations": {
+        "json": "",
+        "jsonSchema": "{\n  \"type\": \"string\"\n}",
+        "yamlSchema": "type: string\n",
+        "go": "type CustomID string\n",
+        "ts": "type CustomID = string;\n"
+      },
+      "usedByHTTP": false,
+      "usedByMQTT": false,
+      "underlyingType": {
+        "kind": "primitive",
+        "type": "string",
+        "format": "",
+        "required": false,
+        "nullable": false,
+        "itemsType": null,
+        "additionalProperties": null,
+        "mapKeyType": null
+      }
+    },
+    "ErrorResponse": {
+      "name": "ErrorResponse",
+      "kind": "object",
+      "description": "ErrorResponse is the unified error response type. It supports both simple errors (just message) and validation errors (message + field errors).",
+      "deprecated": "",
+      "fields": [
+        {
+          "name": "requestID",
+          "displayType": "String",
+          "typeInfo": {
+            "kind": "primitive",
+            "type": "string",
+            "format": "",
+            "required": true,
+            "nullable": false,
+            "itemsType": null,
+            "additionalProperties": null,
+            "mapKeyType": null
+          },
+          "description": "Request ID for tracking",
+          "deprecated": ""
+        },
+        {
+          "name": "message",
+          "displayType": "String",
+          "typeInfo": {
+            "kind": "primitive",
+            "type": "string",
+            "format": "",
+            "required": true,
+            "nullable": false,
+            "itemsType": null,
+            "additionalProperties": null,
+            "mapKeyType": null
+          },
+          "description": "High-level error message",
+          "deprecated": ""
+        },
+        {
+          "name": "errors",
+          "displayType": "Object",
+          "typeInfo": {
+            "kind": "object",
+            "type": "object",
+            "format": "",
+            "required": false,
+            "nullable": false,
+            "itemsType": null,
+            "additionalProperties": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "",
+              "required": false,
+              "nullable": false,
+              "itemsType": null,
+              "additionalProperties": null,
+              "mapKeyType": null
+            },
+            "mapKeyType": {
+              "kind": "primitive",
+              "type": "string",
+              "format": "",
+              "required": false,
+              "nullable": false,
+              "itemsType": null,
+              "additionalProperties": null,
+              "mapKeyType": null
+            }
+          },
+          "description": "Field-level validation errors",
+          "deprecated": ""
+        }
+      ],
+      "enumValues": null,
+      "references": [],
+      "referencedBy": null,
+      "usedBy": [
+        {
+          "operationID": "health",
+          "role": "response"
+        },
+        {
+          "operationID": "ping",
+          "role": "response"
+        }
+      ],
+      "representations": {
+        "json": "{\n  \"requestID\": \"00000000-0000-0000-0000-000000000000\",\n  \"message\": \"Request body too large (max 1MB)\"\n}",
+        "jsonSchema": "{\n  \"additionalProperties\": false,\n  \"description\": \"ErrorResponse is the unified error response type. It supports both simple errors (just message) and validation errors (message + field errors).\",\n  \"properties\": {\n    \"errors\": {\n      \"additionalProperties\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Field-level validation errors\",\n      \"type\": \"object\"\n    },\n    \"message\": {\n      \"description\": \"High-level error message\",\n      \"type\": \"string\"\n    },\n    \"requestID\": {\n      \"description\": \"Request ID for tracking\",\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"requestID\",\n    \"message\"\n  ],\n  \"type\": \"object\"\n}",
+        "yamlSchema": "additionalProperties: false\ndescription: ErrorResponse is the unified error response type. It supports both simple errors (just message) and validation errors (message + field errors).\nproperties:\n    errors:\n        additionalProperties:\n            type: string\n        description: Field-level validation errors\n        type: object\n    message:\n        description: High-level error message\n        type: string\n    requestID:\n        description: Request ID for tracking\n        type: string\nrequired:\n    - requestID\n    - message\ntype: object\n",
+        "go": "// ErrorResponse is the unified error response type.\n// It supports both simple errors (just message) and validation errors (message + field errors).\ntype ErrorResponse struct {\n\t// HTTP status code (internal only, not sent to client)\n\tStatusCode int `json:\"-\"`\n\t// Request ID for tracking\n\tRequestID string `json:\"requestID\"`\n\t// High-level error message\n\tMessage string `json:\"message\"`\n\t// Field-level validation errors\n\tErrors map[string]string `json:\"errors,omitempty\"`\n}\n",
+        "ts": "/**\n * ErrorResponse is the unified error response type.\n * It supports both simple errors (just message) and validation errors (message + field errors).\n */\ntype ErrorResponse = {\n    /**\n     * Request ID for tracking\n     */\n    requestID: string;\n    /**\n     * High-level error message\n     */\n    message: string;\n    /**\n     * Field-level validation errors\n     */\n    errors?: Record<string, string>;\n};\n"
+      },
+      "usedByHTTP": true,
+      "usedByMQTT": false,
+      "underlyingType": null
+    },
+    "HealthResponse": {
+      "name": "HealthResponse",
+      "kind": "object",
+      "description": "HealthResponse is the response to a health check request.",
+      "deprecated": "",
+      "fields": [
+        {
+          "name": "database",
+          "displayType": "Boolean",
+          "typeInfo": {
+            "kind": "primitive",
+            "type": "boolean",
+            "format": "",
+            "required": true,
+            "nullable": false,
+            "itemsType": null,
+            "additionalProperties": null,
+            "mapKeyType": null
+          },
+          "description": "Status of the database connection",
+          "deprecated": ""
+        }
+      ],
+      "enumValues": null,
+      "references": [],
+      "referencedBy": null,
+      "usedBy": [
+        {
+          "operationID": "health",
+          "role": "response"
+        }
+      ],
+      "representations": {
+        "json": "{\n  \"database\": false\n}",
+        "jsonSchema": "{\n  \"additionalProperties\": false,\n  \"description\": \"HealthResponse is the response to a health check request.\",\n  \"properties\": {\n    \"database\": {\n      \"description\": \"Status of the database connection\",\n      \"type\": \"boolean\"\n    }\n  },\n  \"required\": [\n    \"database\"\n  ],\n  \"type\": \"object\"\n}",
+        "yamlSchema": "additionalProperties: false\ndescription: HealthResponse is the response to a health check request.\nproperties:\n    database:\n        description: Status of the database connection\n        type: boolean\nrequired:\n    - database\ntype: object\n",
+        "go": "// HealthResponse is the response to a health check request.\ntype HealthResponse struct {\n\t// Status of the database connection\n\tDatabase bool `json:\"database\"`\n}\n",
+        "ts": "/**\n * HealthResponse is the response to a health check request.\n */\ntype HealthResponse = {\n    /**\n     * Status of the database connection\n     */\n    database: boolean;\n};\n"
+      },
+      "usedByHTTP": true,
+      "usedByMQTT": false,
+      "underlyingType": null
+    },
+    "PingResponse": {
+      "name": "PingResponse",
+      "kind": "object",
+      "description": "PingResponse is the response to a ping request.",
+      "deprecated": "",
+      "fields": [
+        {
+          "name": "message",
+          "displayType": "String",
+          "typeInfo": {
+            "kind": "primitive",
+            "type": "string",
+            "format": "",
+            "required": true,
+            "nullable": false,
+            "itemsType": null,
+            "additionalProperties": null,
+            "mapKeyType": null
+          },
+          "description": "Human-readable message",
+          "deprecated": ""
+        },
+        {
+          "name": "status",
+          "displayType": "PingStatus",
+          "typeInfo": {
+            "kind": "reference",
+            "type": "PingStatus",
+            "format": "",
+            "required": true,
+            "nullable": false,
+            "itemsType": null,
+            "additionalProperties": null,
+            "mapKeyType": null
+          },
+          "description": "Status of the ping",
+          "deprecated": ""
+        },
+        {
+          "name": "metadata",
+          "displayType": "String",
+          "typeInfo": {
+            "kind": "primitive",
+            "type": "string",
+            "format": "",
+            "required": false,
+            "nullable": true,
+            "itemsType": null,
+            "additionalProperties": null,
+            "mapKeyType": null
+          },
+          "description": "",
+          "deprecated": ""
+        }
+      ],
+      "enumValues": null,
+      "references": [
+        "PingStatus"
+      ],
+      "referencedBy": null,
+      "usedBy": [
+        {
+          "operationID": "ping",
+          "role": "response"
+        }
+      ],
+      "representations": {
+        "json": "{\n  \"message\": \"Pong\",\n  \"status\": \"OK\"\n}",
+        "jsonSchema": "{\n  \"additionalProperties\": false,\n  \"description\": \"PingResponse is the response to a ping request.\",\n  \"properties\": {\n    \"message\": {\n      \"description\": \"Human-readable message\",\n      \"type\": \"string\"\n    },\n    \"metadata\": {\n      \"nullable\": true,\n      \"type\": \"string\"\n    },\n    \"status\": {\n      \"$ref\": \"#/components/schemas/PingStatus\"\n    }\n  },\n  \"required\": [\n    \"message\",\n    \"status\"\n  ],\n  \"type\": \"object\"\n}",
+        "yamlSchema": "additionalProperties: false\ndescription: PingResponse is the response to a ping request.\nproperties:\n    message:\n        description: Human-readable message\n        type: string\n    metadata:\n        nullable: true\n        type: string\n    status:\n        $ref: '#/components/schemas/PingStatus'\nrequired:\n    - message\n    - status\ntype: object\n",
+        "go": "// PingResponse is the response to a ping request.\ntype PingResponse struct {\n\t// Human-readable message\n\tMessage string `json:\"message\"`\n\t// Status of the ping\n\tStatus   PingStatus `json:\"status\"`\n\tMetadata *string    `json:\"metadata,omitempty\"`\n}\n",
+        "ts": "/**\n * PingResponse is the response to a ping request.\n */\ntype PingResponse = {\n    /**\n     * Human-readable message\n     */\n    message: string;\n    /**\n     * Status of the ping\n     */\n    status: PingStatus;\n    metadata?: string | null;\n};\n"
+      },
+      "usedByHTTP": true,
+      "usedByMQTT": false,
+      "underlyingType": null
+    },
+    "PingStatus": {
+      "name": "PingStatus",
+      "kind": "string_enum",
+      "description": "PingStatus represents the status of a ping request.",
+      "deprecated": "",
+      "fields": null,
+      "enumValues": [
+        {
+          "value": "OK",
+          "description": "PingStatusOK means the ping was successful.",
+          "deprecated": ""
+        },
+        {
+          "value": "ERROR",
+          "description": "PingStatusError means there was an error with the ping.",
+          "deprecated": ""
+        }
+      ],
+      "references": [],
+      "referencedBy": [
+        "PingResponse"
+      ],
+      "usedBy": null,
+      "representations": {
+        "json": "",
+        "jsonSchema": "{\n  \"description\": \"PingStatus represents the status of a ping request.\\n\\nPossible values:\\n- `OK`: PingStatusOK means the ping was successful.\\n- `ERROR`: PingStatusError means there was an error with the ping.\\n\",\n  \"enum\": [\n    \"OK\",\n    \"ERROR\"\n  ],\n  \"type\": \"string\"\n}",
+        "yamlSchema": "description: |\n    PingStatus represents the status of a ping request.\n\n    Possible values:\n    - `OK`: PingStatusOK means the ping was successful.\n    - `ERROR`: PingStatusError means there was an error with the ping.\nenum:\n    - OK\n    - ERROR\ntype: string\n",
+        "go": "// PingStatus represents the status of a ping request.\ntype PingStatus string\n\nconst (\n\t// PingStatusOK means the ping was successful.\n\tPingStatusOK PingStatus = \"OK\"\n\t// PingStatusError means there was an error with the ping.\n\tPingStatusError PingStatus = \"ERROR\"\n)\n",
+        "ts": "enum PingStatus {\n    /**\n     * PingStatusError means there was an error with the ping.\n     */\n    PingStatusError = \"ERROR\",\n    /**\n     * PingStatusOK means the ping was successful.\n     */\n    PingStatusOK = \"OK\"\n}\n"
+      },
+      "usedByHTTP": true,
+      "usedByMQTT": false,
+      "underlyingType": {
+        "kind": "primitive",
+        "type": "string",
+        "format": "",
+        "required": false,
+        "nullable": false,
+        "itemsType": null,
+        "additionalProperties": null,
+        "mapKeyType": null
+      }
+    }
+  },
+  "httpOperations": {
+    "health": {
+      "operationID": "health",
+      "method": "GET",
+      "path": "/api/health",
+      "summary": "Check server health",
+      "description": "Check if the server is healthy",
+      "group": "Core",
+      "deprecated": "",
+      "request": null,
+      "parameters": null,
+      "responses": {
+        "200": {
+          "statusCode": 200,
+          "type": "HealthResponse",
+          "description": "Successful health response",
+          "examples": {
+            "Success": "{\n  \"database\": true\n}"
+          }
+        },
+        "413": {
+          "statusCode": 413,
+          "type": "ErrorResponse",
+          "description": "Request entity too large",
+          "examples": {
+            "Request Entity Too Large": "{\n  \"requestID\": \"00000000-0000-0000-0000-000000000000\",\n  \"message\": \"Request body too large (max 1MB)\"\n}"
+          }
+        },
+        "500": {
+          "statusCode": 500,
+          "type": "ErrorResponse",
+          "description": "Internal server error",
+          "examples": null
+        },
+        "503": {
+          "statusCode": 503,
+          "type": "HealthResponse",
+          "description": "Server unavailable",
+          "examples": {
+            "Database Unavailable": "{\n  \"database\": false\n}"
+          }
+        }
+      }
+    },
+    "ping": {
+      "operationID": "ping",
+      "method": "GET",
+      "path": "/api/ping",
+      "summary": "Ping the server",
+      "description": "Check if the server is alive",
+      "group": "Core",
+      "deprecated": "",
+      "request": null,
+      "parameters": null,
+      "responses": {
+        "200": {
+          "statusCode": 200,
+          "type": "PingResponse",
+          "description": "Successful ping response",
+          "examples": {
+            "Success": "{\n  \"message\": \"Pong\",\n  \"status\": \"OK\"\n}"
+          }
+        },
+        "413": {
+          "statusCode": 413,
+          "type": "ErrorResponse",
+          "description": "Request entity too large",
+          "examples": {
+            "Request Entity Too Large": "{\n  \"requestID\": \"00000000-0000-0000-0000-000000000000\",\n  \"message\": \"Request body too large (max 1MB)\"\n}"
+          }
+        },
+        "500": {
+          "statusCode": 500,
+          "type": "ErrorResponse",
+          "description": "Internal Server Error",
+          "examples": {
+            "Internal Server Error": "{\n  \"requestID\": \"00000000-0000-0000-0000-000000000000\",\n  \"message\": \"Internal Server Error\"\n}"
+          }
+        }
+      }
+    }
+  },
+  "mqttPublications": {},
+  "mqttSubscriptions": {},
+  "database": {
+    "dialect": "postgres",
+    "schema": "\\restrict dbmate\n\n-- Dumped from database version 18.1\n-- Dumped by pg_dump version 18.1\n\nSET statement_timeout = 0;\nSET lock_timeout = 0;\nSET idle_in_transaction_session_timeout = 0;\nSET transaction_timeout = 0;\nSET client_encoding = 'UTF8';\nSET standard_conforming_strings = on;\nSELECT pg_catalog.set_config('search_path', '', false);\nSET check_function_bodies = false;\nSET xmloption = content;\nSET client_min_messages = warning;\nSET row_security = off;\n\nSET default_tablespace = '';\n\nSET default_table_access_method = heap;\n\n--\n-- Name: api_key; Type: TABLE; Schema: public; Owner: -\n--\n\nCREATE TABLE public.api_key (\n    id integer NOT NULL,\n    key_hash text NOT NULL,\n    name text NOT NULL,\n    user_id integer NOT NULL,\n    permissions jsonb DEFAULT '[]'::jsonb NOT NULL,\n    last_used timestamp without time zone,\n    expires_at timestamp without time zone,\n    revoked boolean DEFAULT false NOT NULL,\n    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n\n\n--\n-- Name: api_key_id_seq; Type: SEQUENCE; Schema: public; Owner: -\n--\n\nCREATE SEQUENCE public.api_key_id_seq\n    AS integer\n    START WITH 1\n    INCREMENT BY 1\n    NO MINVALUE\n    NO MAXVALUE\n    CACHE 1;\n\n\n--\n-- Name: api_key_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -\n--\n\nALTER SEQUENCE public.api_key_id_seq OWNED BY public.api_key.id;\n\n\n--\n-- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -\n--\n\nCREATE TABLE public.schema_migrations (\n    version character varying NOT NULL\n);\n\n\n--\n-- Name: some-table; Type: TABLE; Schema: public; Owner: -\n--\n\nCREATE TABLE public.\"some-table\" (\n    id integer NOT NULL,\n    name text NOT NULL,\n    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n\n\n--\n-- Name: some-table_id_seq; Type: SEQUENCE; Schema: public; Owner: -\n--\n\nCREATE SEQUENCE public.\"some-table_id_seq\"\n    AS integer\n    START WITH 1\n    INCREMENT BY 1\n    NO MINVALUE\n    NO MAXVALUE\n    CACHE 1;\n\n\n--\n-- Name: some-table_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -\n--\n\nALTER SEQUENCE public.\"some-table_id_seq\" OWNED BY public.\"some-table\".id;\n\n\n--\n-- Name: user; Type: TABLE; Schema: public; Owner: -\n--\n\nCREATE TABLE public.\"user\" (\n    id integer NOT NULL,\n    name text NOT NULL,\n    email text NOT NULL,\n    password text NOT NULL,\n    last_login timestamp without time zone,\n    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL\n);\n\n\n--\n-- Name: user_id_seq; Type: SEQUENCE; Schema: public; Owner: -\n--\n\nCREATE SEQUENCE public.user_id_seq\n    AS integer\n    START WITH 1\n    INCREMENT BY 1\n    NO MINVALUE\n    NO MAXVALUE\n    CACHE 1;\n\n\n--\n-- Name: user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -\n--\n\nALTER SEQUENCE public.user_id_seq OWNED BY public.\"user\".id;\n\n\n--\n-- Name: api_key id; Type: DEFAULT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.api_key ALTER COLUMN id SET DEFAULT nextval('public.api_key_id_seq'::regclass);\n\n\n--\n-- Name: some-table id; Type: DEFAULT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.\"some-table\" ALTER COLUMN id SET DEFAULT nextval('public.\"some-table_id_seq\"'::regclass);\n\n\n--\n-- Name: user id; Type: DEFAULT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.\"user\" ALTER COLUMN id SET DEFAULT nextval('public.user_id_seq'::regclass);\n\n\n--\n-- Name: api_key api_key_key_hash_key; Type: CONSTRAINT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.api_key\n    ADD CONSTRAINT api_key_key_hash_key UNIQUE (key_hash);\n\n\n--\n-- Name: api_key api_key_pkey; Type: CONSTRAINT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.api_key\n    ADD CONSTRAINT api_key_pkey PRIMARY KEY (id);\n\n\n--\n-- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.schema_migrations\n    ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);\n\n\n--\n-- Name: some-table some-table_pkey; Type: CONSTRAINT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.\"some-table\"\n    ADD CONSTRAINT \"some-table_pkey\" PRIMARY KEY (id);\n\n\n--\n-- Name: user user_pkey; Type: CONSTRAINT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.\"user\"\n    ADD CONSTRAINT user_pkey PRIMARY KEY (id);\n\n\n--\n-- Name: api_key_key_hash_idx; Type: INDEX; Schema: public; Owner: -\n--\n\nCREATE INDEX api_key_key_hash_idx ON public.api_key USING btree (key_hash);\n\n\n--\n-- Name: api_key_revoked_idx; Type: INDEX; Schema: public; Owner: -\n--\n\nCREATE INDEX api_key_revoked_idx ON public.api_key USING btree (revoked);\n\n\n--\n-- Name: api_key_user_id_idx; Type: INDEX; Schema: public; Owner: -\n--\n\nCREATE INDEX api_key_user_id_idx ON public.api_key USING btree (user_id);\n\n\n--\n-- Name: user_email_idx; Type: INDEX; Schema: public; Owner: -\n--\n\nCREATE INDEX user_email_idx ON public.\"user\" USING btree (email);\n\n\n--\n-- Name: user_name_idx; Type: INDEX; Schema: public; Owner: -\n--\n\nCREATE INDEX user_name_idx ON public.\"user\" USING btree (name);\n\n\n--\n-- Name: api_key fk_api_key_user; Type: FK CONSTRAINT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.api_key\n    ADD CONSTRAINT fk_api_key_user FOREIGN KEY (user_id) REFERENCES public.\"user\"(id) ON DELETE CASCADE;\n\n\n--\n-- Name: user fk_user_some_table; Type: FK CONSTRAINT; Schema: public; Owner: -\n--\n\nALTER TABLE ONLY public.\"user\"\n    ADD CONSTRAINT fk_user_some_table FOREIGN KEY (id) REFERENCES public.\"some-table\"(id) ON DELETE CASCADE;\n\n\n--\n-- PostgreSQL database dump complete\n--\n\n\\unrestrict dbmate\n\n\n--\n-- Dbmate schema migrations\n--\n\nINSERT INTO public.schema_migrations (version) VALUES\n    ('20260206100000'),\n    ('20260207000001');"
+  },
+  "openapiSpec": "components:\n    schemas:\n        ErrorResponse:\n            additionalProperties: false\n            description: ErrorResponse is the unified error response type. It supports both simple errors (just message) and validation errors (message + field errors).\n            properties:\n                errors:\n                    additionalProperties:\n                        type: string\n                    description: Field-level validation errors\n                    type: object\n                message:\n                    description: High-level error message\n                    type: string\n                requestID:\n                    description: Request ID for tracking\n                    type: string\n            required:\n                - requestID\n                - message\n            type: object\n        HealthResponse:\n            additionalProperties: false\n            description: HealthResponse is the response to a health check request.\n            properties:\n                database:\n                    description: Status of the database connection\n                    type: boolean\n            required:\n                - database\n            type: object\n        PingResponse:\n            additionalProperties: false\n            description: PingResponse is the response to a ping request.\n            properties:\n                message:\n                    description: Human-readable message\n                    type: string\n                metadata:\n                    nullable: true\n                    type: string\n                status:\n                    $ref: '#/components/schemas/PingStatus'\n            required:\n                - message\n                - status\n            type: object\n        PingStatus:\n            description: |\n                PingStatus represents the status of a ping request.\n\n                Possible values:\n                - `OK`: PingStatusOK means the ping was successful.\n                - `ERROR`: PingStatusError means there was an error with the ping.\n            enum:\n                - OK\n                - ERROR\n            type: string\ninfo:\n    description: Cloud API Documentation\n    title: Cloud API\n    version: vdev (72d099a-dirty)\nopenapi: 3.0.3\npaths:\n    /api/health:\n        get:\n            description: Check if the server is healthy\n            operationId: health\n            responses:\n                \"200\":\n                    content:\n                        application/json:\n                            examples:\n                                Success:\n                                    value:\n                                        database: true\n                            schema:\n                                $ref: '#/components/schemas/HealthResponse'\n                    description: Successful health response\n                \"413\":\n                    content:\n                        application/json:\n                            examples:\n                                Request Entity Too Large:\n                                    value:\n                                        message: Request body too large (max 1MB)\n                                        requestID: 00000000-0000-0000-0000-000000000000\n                            schema:\n                                $ref: '#/components/schemas/ErrorResponse'\n                    description: Request entity too large\n                \"500\":\n                    content:\n                        application/json:\n                            schema:\n                                $ref: '#/components/schemas/ErrorResponse'\n                    description: Internal server error\n                \"503\":\n                    content:\n                        application/json:\n                            examples:\n                                Database Unavailable:\n                                    value:\n                                        database: false\n                            schema:\n                                $ref: '#/components/schemas/HealthResponse'\n                    description: Server unavailable\n            summary: Check server health\n            tags:\n                - Core\n    /api/ping:\n        get:\n            description: Check if the server is alive\n            operationId: ping\n            responses:\n                \"200\":\n                    content:\n                        application/json:\n                            examples:\n                                Success:\n                                    value:\n                                        message: Pong\n                                        status: OK\n                            schema:\n                                $ref: '#/components/schemas/PingResponse'\n                    description: Successful ping response\n                \"413\":\n                    content:\n                        application/json:\n                            examples:\n                                Request Entity Too Large:\n                                    value:\n                                        message: Request body too large (max 1MB)\n                                        requestID: 00000000-0000-0000-0000-000000000000\n                            schema:\n                                $ref: '#/components/schemas/ErrorResponse'\n                    description: Request entity too large\n                \"500\":\n                    content:\n                        application/json:\n                            examples:\n                                Internal Server Error:\n                                    value:\n                                        message: Internal Server Error\n                                        requestID: 00000000-0000-0000-0000-000000000000\n                            schema:\n                                $ref: '#/components/schemas/ErrorResponse'\n                    description: Internal Server Error\n            summary: Ping the server\n            tags:\n                - Core\nservers:\n    - description: Local server\n      url: http://localhost:8080\n"
+}

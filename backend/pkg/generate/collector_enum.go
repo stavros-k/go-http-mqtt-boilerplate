@@ -23,9 +23,7 @@ func isEnumKind(kind string) bool {
 }
 
 // extractConstDeclarations extracts enum values from const blocks in a single AST file.
-func (g *OpenAPICollector) extractConstDeclarations(file *ast.File) []error {
-	var errs []error
-
+func (g *OpenAPICollector) extractConstDeclarations(file *ast.File) error {
 	for _, decl := range file.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok || genDecl.Tok != token.CONST {
@@ -44,10 +42,10 @@ func (g *OpenAPICollector) extractConstDeclarations(file *ast.File) []error {
 		}
 
 		// All other errors are real problems
-		errs = append(errs, fmt.Errorf("failed to process const block: %w", err))
+		return fmt.Errorf("failed to process const block: %w", err)
 	}
 
-	return errs
+	return nil
 }
 
 // extractEnumsFromConstBlock extracts enum values from a const block.

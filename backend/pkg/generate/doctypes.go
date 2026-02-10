@@ -20,6 +20,7 @@ type TypeInfo struct {
 type Representations struct {
 	JSON       string `json:"json"`       // JSON representation of the type (zero value example)
 	JSONSchema string `json:"jsonSchema"` // JSON Schema representation of the type
+	YAMLSchema string `json:"yamlSchema"` // YAML Schema representation of the type (more human-readable)
 	Go         string `json:"go"`         // Go representation of the type
 	TS         string `json:"ts"`         // TypeScript representation of the type
 }
@@ -33,6 +34,7 @@ type FieldType struct {
 	Nullable             bool       `json:"nullable"`             // For nullable types (T | null)
 	ItemsType            *FieldType `json:"itemsType"`            // For arrays: type of array elements
 	AdditionalProperties *FieldType `json:"additionalProperties"` // For maps: type of map values
+	MapKeyType           *FieldType `json:"mapKeyType"`           // For maps: type of map keys
 }
 
 // FieldInfo describes a field in a struct (used in high-level API documentation).
@@ -169,6 +171,6 @@ type ServerInfo struct {
 }
 
 type Database struct {
-	Schema     string `json:"schema"`
-	TableCount int    `json:"tableCount"`
+	Dialect string `json:"dialect"`
+	Schema  string `json:"schema"`
 }

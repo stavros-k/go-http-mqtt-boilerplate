@@ -118,7 +118,7 @@ func (rb *RouteBuilder) MustGet(path string, spec RouteSpec) {
 	spec.method = http.MethodGet
 
 	if err := rb.add(path, spec); err != nil {
-		rb.l.Error("Fatal error", utils.ErrAttr(err))
+		rb.l.Error("fatal error", utils.ErrAttr(err))
 		os.Exit(1)
 	}
 }
@@ -135,7 +135,7 @@ func (rb *RouteBuilder) MustPost(path string, spec RouteSpec) {
 	spec.method = http.MethodPost
 
 	if err := rb.add(path, spec); err != nil {
-		rb.l.Error("Fatal error", utils.ErrAttr(err))
+		rb.l.Error("fatal error", utils.ErrAttr(err))
 		os.Exit(1)
 	}
 }
@@ -152,7 +152,7 @@ func (rb *RouteBuilder) MustPut(path string, spec RouteSpec) {
 	spec.method = http.MethodPut
 
 	if err := rb.add(path, spec); err != nil {
-		rb.l.Error("Fatal error", utils.ErrAttr(err))
+		rb.l.Error("fatal error", utils.ErrAttr(err))
 		os.Exit(1)
 	}
 }
@@ -169,7 +169,7 @@ func (rb *RouteBuilder) MustPatch(path string, spec RouteSpec) {
 	spec.method = http.MethodPatch
 
 	if err := rb.add(path, spec); err != nil {
-		rb.l.Error("Fatal error", utils.ErrAttr(err))
+		rb.l.Error("fatal error", utils.ErrAttr(err))
 		os.Exit(1)
 	}
 }
@@ -186,7 +186,7 @@ func (rb *RouteBuilder) MustDelete(path string, spec RouteSpec) {
 	spec.method = http.MethodDelete
 
 	if err := rb.add(path, spec); err != nil {
-		rb.l.Error("Fatal error", utils.ErrAttr(err))
+		rb.l.Error("fatal error", utils.ErrAttr(err))
 		os.Exit(1)
 	}
 }
@@ -274,7 +274,7 @@ func (rb *RouteBuilder) add(path string, spec RouteSpec) error {
 	rb.router.Method(spec.method, spec.fullPath, spec.Handler)
 	rb.operationIDs[spec.OperationID] = struct{}{}
 
-	rb.l.Info("Registered route", slog.String("method", spec.method), slog.String("path", spec.fullPath), slog.String("operationID", spec.OperationID))
+	rb.l.Info("registered route", slog.String("method", spec.method), slog.String("path", spec.fullPath), slog.String("operationID", spec.OperationID))
 
 	return nil
 }

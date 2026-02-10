@@ -1,2 +1,4 @@
 node_modules/
+bin/
 /data
+/api_docs.json
