@@ -89,15 +89,6 @@ func NewAPIError(statusCode int, message string) *types.ErrorResponse {
 	}
 }
 
-// NewValidationError creates a validation error with field-level details.
-func NewValidationError(fieldErrors map[string]string) *types.ErrorResponse {
-	return &types.ErrorResponse{
-		StatusCode: http.StatusBadRequest,
-		Message:    "Validation failed",
-		Errors:     fieldErrors,
-	}
-}
-
 // ErrorHandler wraps handlers with error handling.
 func ErrorHandler(fn HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -232,7 +223,7 @@ func GenerateResponses(responses map[int]router.ResponseSpec) map[int]router.Res
 			Examples: map[string]any{
 				"Service Unavailable": types.ErrorResponse{
 					RequestID: zeroUUID,
-					Message:   "Service Unavailable",
+					Message:   "Service Temporarily Unavailable",
 				},
 			},
 		}
