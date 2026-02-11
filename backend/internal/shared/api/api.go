@@ -18,7 +18,6 @@ import (
 
 const (
 	MaxBodySize     = 1048576 // 1MB
-	MaxBodyText     = "1MB"
 	RequestIDHeader = "X-Request-ID"
 
 	ReadHeaderTimeout = 5 * time.Second
@@ -173,7 +172,7 @@ func DecodeJSON[T any](r *http.Request) (T, error) {
 			return zero, NewAPIError(http.StatusBadRequest, "Malformed JSON")
 
 		case errors.As(err, &maxBytesError):
-			return zero, NewAPIError(http.StatusRequestEntityTooLarge, "Request body too large (max "+MaxBodyText+")")
+			return zero, NewAPIError(http.StatusRequestEntityTooLarge, fmt.Sprintf("Request body too large (max %dMB)", MaxBodySize*1024*1024))
 
 		case errors.As(err, &extraDataError):
 			return zero, NewAPIError(http.StatusBadRequest, "Request body contains multiple JSON objects")
@@ -199,7 +198,7 @@ func GenerateResponses(responses map[int]router.ResponseSpec) map[int]router.Res
 			Examples: map[string]any{
 				"Request Entity Too Large": types.ErrorResponse{
 					RequestID: zeroUUID,
-					Message:   "Request body too large (max " + MaxBodyText + ")",
+					Message:   fmt.Sprintf("Request body too large (max %dMB)", MaxBodySize*1024*1024),
 				},
 			},
 		}

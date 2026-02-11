@@ -114,7 +114,7 @@ func (c *MQTTClient) SubscribeAll(ctx context.Context) error {
 	_, err := c.connMgr.Subscribe(ctx, &paho.Subscribe{Subscriptions: subscriptions})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return errors.New("subscribe all timeout after 10s, might complete later if reconnecting")
+			return fmt.Errorf("subscribe all timeout after %s, might complete later if reconnecting", sendTimeout)
 		}
 
 		return err
