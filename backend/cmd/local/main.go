@@ -31,6 +31,7 @@ func main() {
 	defer sigCancel()
 
 	logger := slog.Default()
+
 	config, err := config.New()
 	if err != nil {
 		fatalIfErr(logger, fmt.Errorf("failed to create config: %w", err))

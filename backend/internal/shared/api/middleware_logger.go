@@ -33,6 +33,7 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 
 	n, err := rw.ResponseWriter.Write(b)
 	rw.bytesWritten += int64(n)
+
 	return n, err
 }
 
@@ -44,7 +45,7 @@ func wrapResponseWriter(w http.ResponseWriter) *responseWriter {
 // LoggerMiddleware adds a request-scoped logger to the context and logs requests.
 func (m *MiddlewareHandler) LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestID := GetRequestID(r.Context())
+		requestID := GetRequestIDFromContext(r.Context())
 
 		// Create request-scoped logger with context
 		reqLogger := m.l.With(

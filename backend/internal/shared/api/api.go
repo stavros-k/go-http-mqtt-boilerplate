@@ -18,7 +18,6 @@ import (
 
 const (
 	MaxBodySize     = 1048576 // 1MB
-	MaxBodyText     = "1MB"
 	RequestIDHeader = "X-Request-ID"
 
 	ReadHeaderTimeout = 5 * time.Second
@@ -55,6 +54,7 @@ func NewHTTPServer(l *slog.Logger, addr string, handler http.Handler) *HTTPServe
 func (s *HTTPServer) StartOnBackground(cancel context.CancelFunc) {
 	go func() {
 		s.l.Info("starting", "addr", s.server.Addr)
+
 		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			s.l.Error("failed", utils.ErrAttr(err))
 			cancel()
@@ -65,6 +65,7 @@ func (s *HTTPServer) StartOnBackground(cancel context.CancelFunc) {
 func (s *HTTPServer) ShutdownWithDefaultTimeout() error {
 	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
+
 	return s.server.Shutdown(ctx)
 }
 
@@ -81,28 +82,19 @@ func NewMiddlewareHandler(l *slog.Logger) *MiddlewareHandler {
 // HandlerFunc is a HTTP handler that can return an error.
 type HandlerFunc func(w http.ResponseWriter, r *http.Request) error
 
-// NewError creates a simple error response.
-func NewError(statusCode int, message string) *types.ErrorResponse {
+// NewAPIError creates a simple error response.
+func NewAPIError(statusCode int, message string) *types.ErrorResponse {
 	return &types.ErrorResponse{
 		StatusCode: statusCode,
 		Message:    message,
 	}
 }
 
-// NewValidationError creates a validation error with field-level details.
-func NewValidationError(fieldErrors map[string]string) *types.ErrorResponse {
-	return &types.ErrorResponse{
-		StatusCode: http.StatusBadRequest,
-		Message:    "Validation failed",
-		Errors:     fieldErrors,
-	}
-}
-
 // ErrorHandler wraps handlers with error handling.
 func ErrorHandler(fn HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l := GetLogger(r.Context())
-		requestID := GetRequestID(r.Context())
+		l := GetLoggerFromContext(r.Context())
+		requestID := GetRequestIDFromContext(r.Context())
 
 		err := fn(w, r)
 		if err == nil {
@@ -140,7 +132,7 @@ func RespondJSON(w http.ResponseWriter, r *http.Request, statusCode int, data an
 		return
 	}
 
-	l := GetLogger(r.Context())
+	l := GetLoggerFromContext(r.Context())
 	if err := utils.ToJSONStream(w, data); err != nil {
 		// Note that if this fails header has already been written
 		// There's not much we can do at this point
@@ -168,29 +160,29 @@ func DecodeJSON[T any](r *http.Request) (T, error) {
 
 		switch {
 		case errors.As(err, &syntaxError):
-			return zero, NewError(http.StatusBadRequest, fmt.Sprintf("Invalid JSON syntax at position %d", syntaxError.Offset))
+			return zero, NewAPIError(http.StatusBadRequest, fmt.Sprintf("Invalid JSON syntax at position %d", syntaxError.Offset))
 
 		case errors.As(err, &unmarshalTypeError):
-			return zero, NewError(http.StatusBadRequest, fmt.Sprintf("Invalid type for field '%s'", unmarshalTypeError.Field))
+			return zero, NewAPIError(http.StatusBadRequest, fmt.Sprintf("Invalid type for field '%s'", unmarshalTypeError.Field))
 
 		case errors.Is(err, io.EOF):
-			return zero, NewError(http.StatusBadRequest, "Request body is empty")
+			return zero, NewAPIError(http.StatusBadRequest, "Request body is empty")
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
-			return zero, NewError(http.StatusBadRequest, "Malformed JSON")
+			return zero, NewAPIError(http.StatusBadRequest, "Malformed JSON")
 
 		case errors.As(err, &maxBytesError):
-			return zero, NewError(http.StatusRequestEntityTooLarge, "Request body too large (max "+MaxBodyText+")")
+			return zero, NewAPIError(http.StatusRequestEntityTooLarge, fmt.Sprintf("Request body too large (max %dMB)", MaxBodySize/(1024*1024)))
 
 		case errors.As(err, &extraDataError):
-			return zero, NewError(http.StatusBadRequest, "Request body contains multiple JSON objects")
+			return zero, NewAPIError(http.StatusBadRequest, "Request body contains multiple JSON objects")
 
 		case strings.HasPrefix(err.Error(), "json: unknown field"):
 			// json package formats this as: json: unknown field "fieldname"
-			return zero, NewError(http.StatusBadRequest, err.Error())
+			return zero, NewAPIError(http.StatusBadRequest, err.Error())
 
 		default:
-			return zero, NewError(http.StatusBadRequest, "Invalid JSON payload")
+			return zero, NewAPIError(http.StatusBadRequest, "Invalid JSON payload")
 		}
 	}
 
@@ -206,7 +198,7 @@ func GenerateResponses(responses map[int]router.ResponseSpec) map[int]router.Res
 			Examples: map[string]any{
 				"Request Entity Too Large": types.ErrorResponse{
 					RequestID: zeroUUID,
-					Message:   "Request body too large (max " + MaxBodyText + ")",
+					Message:   fmt.Sprintf("Request body too large (max %dMB)", MaxBodySize/(1024*1024)),
 				},
 			},
 		}
@@ -220,6 +212,19 @@ func GenerateResponses(responses map[int]router.ResponseSpec) map[int]router.Res
 				"Internal Server Error": types.ErrorResponse{
 					RequestID: zeroUUID,
 					Message:   "Internal Server Error",
+				},
+			},
+		}
+	}
+
+	if _, exists := responses[http.StatusServiceUnavailable]; !exists {
+		responses[http.StatusServiceUnavailable] = router.ResponseSpec{
+			Description: "Service Unavailable",
+			Type:        types.ErrorResponse{},
+			Examples: map[string]any{
+				"Service Unavailable": types.ErrorResponse{
+					RequestID: zeroUUID,
+					Message:   "Service Unavailable",
 				},
 			},
 		}

@@ -64,6 +64,7 @@ func NewPgxPool(ctx context.Context, l *slog.Logger, connString string) (*pgxpoo
 			for k, v := range data {
 				attrs = append(attrs, slog.Any(k, v))
 			}
+
 			dbLogger.LogAttrs(ctx, traceLogLevelToSlog(level), msg, attrs...)
 		}),
 	}
@@ -79,6 +80,8 @@ func NewPgxPool(ctx context.Context, l *slog.Logger, connString string) (*pgxpoo
 // traceLogLevelToSlog converts tracelog.LogLevel to slog.Level.
 func traceLogLevelToSlog(level tracelog.LogLevel) slog.Level {
 	switch level {
+	case tracelog.LogLevelNone:
+		return slog.LevelDebug - 2
 	case tracelog.LogLevelTrace:
 		return slog.LevelDebug - 1
 	case tracelog.LogLevelDebug:

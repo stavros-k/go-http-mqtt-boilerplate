@@ -125,7 +125,7 @@ components:
 info:
     description: Local API Documentation
     title: Local API
-    version: vdev (72d099a-dirty)
+    version: vdev (unknown)
 openapi: 3.0.3
 paths:
     /api/health:
@@ -221,6 +221,17 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
                     description: Internal Server Error
+                "503":
+                    content:
+                        application/json:
+                            examples:
+                                Service Unavailable:
+                                    value:
+                                        message: Service Unavailable
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Service Unavailable
             summary: Ping the server
             tags:
                 - Core
@@ -284,6 +295,17 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
                     description: Internal Server Error
+                "503":
+                    content:
+                        application/json:
+                            examples:
+                                Service Unavailable:
+                                    value:
+                                        message: Service Unavailable
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Service Unavailable
             summary: Create a team
             tags:
                 - Team
@@ -346,6 +368,17 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
                     description: Internal Server Error
+                "503":
+                    content:
+                        application/json:
+                            examples:
+                                Service Unavailable:
+                                    value:
+                                        message: Service Unavailable
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Service Unavailable
             summary: Create a team
             tags:
                 - Team
@@ -408,6 +441,17 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
                     description: Internal Server Error
+                "503":
+                    content:
+                        application/json:
+                            examples:
+                                Service Unavailable:
+                                    value:
+                                        message: Service Unavailable
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Service Unavailable
             summary: Create a team
             tags:
                 - Team
@@ -482,6 +526,17 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
                     description: Internal Server Error
+                "503":
+                    content:
+                        application/json:
+                            examples:
+                                Service Unavailable:
+                                    value:
+                                        message: Service Unavailable
+                                        requestID: 00000000-0000-0000-0000-000000000000
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                    description: Service Unavailable
             summary: Get a team
             tags:
                 - Team

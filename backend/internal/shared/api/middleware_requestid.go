@@ -1,6 +1,7 @@
 package apicommon
 
 import (
+	"http-mqtt-boilerplate/backend/internal/shared/types"
 	"http-mqtt-boilerplate/backend/pkg/utils"
 	"net/http"
 
@@ -16,10 +17,20 @@ func (m *MiddlewareHandler) RequestIDMiddleware(next http.Handler) http.Handler 
 		if requestID == "" {
 			reqID, err := uuid.NewV7()
 			if err != nil {
-				m.l.Error("failed to generate request ID", utils.ErrAttr(err))
-				http.Error(w, "Service temporarily unavailable", http.StatusServiceUnavailable)
+				l := GetLoggerFromContextOrNil(r.Context())
+				if l == nil {
+					l = m.l
+				}
+
+				l.Error("failed to generate request ID", utils.ErrAttr(err))
+				RespondJSON(w, r, http.StatusServiceUnavailable, &types.ErrorResponse{
+					RequestID: zeroUUID,
+					Message:   "Service Unavailable",
+				})
+
 				return
 			}
+
 			requestID = reqID.String()
 		}
 

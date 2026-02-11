@@ -18,6 +18,7 @@ func NewSlogWriter(logger *slog.Logger) *logWriter {
 func (w *logWriter) Write(p []byte) (n int, err error) {
 	// Trim trailing newline to avoid double newlines in logs
 	msg := bytes.TrimRight(p, "\n")
+
 	msg = bytes.ToLower(msg)
 	if len(msg) > 0 {
 		w.logger.Info(string(msg))

@@ -95,7 +95,7 @@ func (h *Handler) RegisterCreateTeam(path string, rb *router.RouteBuilder) {
 				Description: "Invalid request",
 				Type:        localtypes.CreateUserResponse{},
 				Examples: map[string]any{
-					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: utils.Ptr(utils.MustNewURL("https://localhost:8080/user"))},
+					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: new(utils.MustNewURL("https://localhost:8080/user"))},
 				},
 			},
 		}),
@@ -133,7 +133,7 @@ func (h *Handler) RegisterDeleteTeam(path string, rb *router.RouteBuilder) {
 				Description: "Invalid request",
 				Type:        localtypes.CreateUserResponse{},
 				Examples: map[string]any{
-					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: utils.Ptr(utils.MustNewURL("https://localhost:8080/user"))},
+					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: new(utils.MustNewURL("https://localhost:8080/user"))},
 				},
 			},
 		}),
@@ -171,7 +171,7 @@ func (h *Handler) RegisterPutTeam(path string, rb *router.RouteBuilder) {
 				Description: "Invalid request",
 				Type:        localtypes.CreateUserResponse{},
 				Examples: map[string]any{
-					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: utils.Ptr(utils.MustNewURL("https://localhost:8080/user"))},
+					"example-1": localtypes.CreateUserResponse{UserID: "123", CreatedAt: time.Time{}, URL: new(utils.MustNewURL("https://localhost:8080/user"))},
 				},
 			},
 		}),
