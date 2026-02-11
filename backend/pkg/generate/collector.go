@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"http-mqtt-boilerplate/backend/pkg/utils"
 	"log/slog"
 	"os"
 	"reflect"
@@ -43,14 +42,14 @@ func getExternalTypeMappings() []externalType {
 			fullPath:      "time.Time",
 			openAPIFormat: FormatDateTime,
 			gutsOverride: func() bindings.ExpressionType {
-				return utils.Ptr(bindings.KeywordString)
+				return new(bindings.KeywordString)
 			},
 		},
 		{
 			fullPath:      "http-mqtt-boilerplate/backend/pkg/utils.URL",
 			openAPIFormat: FormatURI,
 			gutsOverride: func() bindings.ExpressionType {
-				return utils.Ptr(bindings.KeywordString)
+				return new(bindings.KeywordString)
 			},
 		},
 	}

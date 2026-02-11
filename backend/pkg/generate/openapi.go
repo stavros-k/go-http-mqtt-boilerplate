@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"http-mqtt-boilerplate/backend/pkg/utils"
 	"net/http"
 	"strconv"
 	"strings"
@@ -62,7 +61,7 @@ func buildObjectSchema(typeInfo *TypeInfo) (*openapi3.Schema, error) {
 
 	// Structured objects should not allow additional properties
 	schema.AdditionalProperties = openapi3.AdditionalProperties{
-		Has: utils.Ptr(false),
+		Has: new(false),
 	}
 
 	for _, field := range typeInfo.Fields {
@@ -231,7 +230,7 @@ func buildObjectSchemaFromFieldType(ft FieldType, description string) (*openapi3
 		Description: description,
 	}
 
-	schema.AdditionalProperties = openapi3.AdditionalProperties{Has: utils.Ptr(false)}
+	schema.AdditionalProperties = openapi3.AdditionalProperties{Has: new(false)}
 
 	// Handle additionalProperties for map types
 	if ft.AdditionalProperties != nil {
