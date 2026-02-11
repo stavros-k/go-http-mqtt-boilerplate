@@ -172,7 +172,7 @@ func DecodeJSON[T any](r *http.Request) (T, error) {
 			return zero, NewAPIError(http.StatusBadRequest, "Malformed JSON")
 
 		case errors.As(err, &maxBytesError):
-			return zero, NewAPIError(http.StatusRequestEntityTooLarge, fmt.Sprintf("Request body too large (max %dMB)", MaxBodySize*1024*1024))
+			return zero, NewAPIError(http.StatusRequestEntityTooLarge, fmt.Sprintf("Request body too large (max %dMB)", MaxBodySize/(1024*1024)))
 
 		case errors.As(err, &extraDataError):
 			return zero, NewAPIError(http.StatusBadRequest, "Request body contains multiple JSON objects")
@@ -198,7 +198,7 @@ func GenerateResponses(responses map[int]router.ResponseSpec) map[int]router.Res
 			Examples: map[string]any{
 				"Request Entity Too Large": types.ErrorResponse{
 					RequestID: zeroUUID,
-					Message:   fmt.Sprintf("Request body too large (max %dMB)", MaxBodySize*1024*1024),
+					Message:   fmt.Sprintf("Request body too large (max %dMB)", MaxBodySize/(1024*1024)),
 				},
 			},
 		}
@@ -224,7 +224,7 @@ func GenerateResponses(responses map[int]router.ResponseSpec) map[int]router.Res
 			Examples: map[string]any{
 				"Service Unavailable": types.ErrorResponse{
 					RequestID: zeroUUID,
-					Message:   "Service Temporarily Unavailable",
+					Message:   "Service Unavailable",
 				},
 			},
 		}
