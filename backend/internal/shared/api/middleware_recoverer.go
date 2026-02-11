@@ -10,13 +10,16 @@ import (
 // RecoveryMiddleware recovers from panics and logs them.
 func (m *MiddlewareHandler) RecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//nolint:contextcheck // Context accessed from closure is safe in defer recover
 		defer func() {
 			if err := recover(); err != nil {
+				requestID := GetRequestIDFromContext(r.Context())
+
 				l := GetLoggerFromContextOrNil(r.Context())
 				if l == nil {
 					l = m.l
 				}
-				requestID := GetRequestIDFromContext(r.Context())
+
 				l.Error("panic recovered",
 					slog.Any("error", err),
 					slog.String("stack", string(debug.Stack())),

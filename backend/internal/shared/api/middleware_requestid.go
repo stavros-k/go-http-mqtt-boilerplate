@@ -21,11 +21,13 @@ func (m *MiddlewareHandler) RequestIDMiddleware(next http.Handler) http.Handler 
 				if l == nil {
 					l = m.l
 				}
+
 				l.Error("failed to generate request ID", utils.ErrAttr(err))
 				RespondJSON(w, r, http.StatusServiceUnavailable, &types.ErrorResponse{
 					RequestID: zeroUUID,
 					Message:   "Service Temporarily Unavailable",
 				})
+
 				return
 			}
 

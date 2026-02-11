@@ -41,7 +41,7 @@ func (c *MQTTClient) IsConnected() bool {
 
 // Publish sends a message to the specified topic using the publication spec identified by operationID.
 // It does not validate the topic or payload.
-// TODO: Make this easier to work with, passing operationID is a bit awkward and error prone
+// TODO: Make this easier to work with, passing operationID is a bit awkward and error prone.
 func (c *MQTTClient) Publish(ctx context.Context, operationID string, actualTopic string, payload any) error {
 	if c.connMgr == nil {
 		return errors.New("MQTT client not connected - call Connect first")
@@ -72,13 +72,15 @@ func (c *MQTTClient) Publish(ctx context.Context, operationID string, actualTopi
 		Retain:  pub.Retained,
 		Payload: bytes,
 	})
-
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			log.Warn("publish still pending")
+
 			return errors.New("publish timeout, might complete later if reconnecting")
 		}
+
 		log.Error("publish failed", utils.ErrAttr(err))
+
 		return err
 	}
 
@@ -93,6 +95,7 @@ func (c *MQTTClient) SubscribeAll(ctx context.Context) error {
 
 	if len(c.builder.subscriptions) == 0 {
 		c.l.Info("no subscriptions to subscribe to")
+
 		return nil
 	}
 
@@ -109,13 +112,14 @@ func (c *MQTTClient) SubscribeAll(ctx context.Context) error {
 	defer cancel()
 
 	_, err := c.connMgr.Subscribe(ctx, &paho.Subscribe{Subscriptions: subscriptions})
-
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return errors.New("subscribe all timeout after 10s, might complete later if reconnecting")
 		}
+
 		return err
 	}
+
 	for _, sub := range subscriptions {
 		c.l.Info("subscribed to topic", slog.String("topic", sub.Topic), slog.Int("qos", int(sub.QoS)))
 	}

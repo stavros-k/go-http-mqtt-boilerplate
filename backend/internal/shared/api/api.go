@@ -55,6 +55,7 @@ func NewHTTPServer(l *slog.Logger, addr string, handler http.Handler) *HTTPServe
 func (s *HTTPServer) StartOnBackground(cancel context.CancelFunc) {
 	go func() {
 		s.l.Info("starting", "addr", s.server.Addr)
+
 		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			s.l.Error("failed", utils.ErrAttr(err))
 			cancel()
@@ -65,6 +66,7 @@ func (s *HTTPServer) StartOnBackground(cancel context.CancelFunc) {
 func (s *HTTPServer) ShutdownWithDefaultTimeout() error {
 	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
+
 	return s.server.Shutdown(ctx)
 }
 

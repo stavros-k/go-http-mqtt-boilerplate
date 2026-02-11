@@ -253,7 +253,7 @@ func (mb *MQTTBuilder) Connect(ctx context.Context) error {
 	}()
 
 	// Wait for the initial connection with autopaho
-	// autopaho will automatically connect when [autopaho.NewConnection] is called
+	// will automatically connect when [autopaho.NewConnection] is called
 	// from within the [newAutopahoConnection] function
 	// We just need to wait for the first successful connection
 	err = mb.connMgr.AwaitConnection(ctx)
@@ -281,6 +281,7 @@ func (mb *MQTTBuilder) DisconnectWithDefaultTimeout() {
 	err := mb.connMgr.Disconnect(ctx)
 	if err != nil {
 		mb.l.Error("failed to disconnect from mqtt broker", utils.ErrAttr(err))
+
 		return
 	}
 
@@ -310,5 +311,6 @@ func (mb *MQTTBuilder) onConnectionError(err error) {
 func (mb *MQTTBuilder) onConnectionDown() bool {
 	mb.l.Warn("connection to mqtt broker lost")
 	mb.connected.Store(false)
+
 	return true // Return true to allow autopaho to attempt reconnection
 }

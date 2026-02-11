@@ -1,5 +1,7 @@
 package types
 
+import "strings"
+
 // ErrorResponse is the unified error response type.
 // It supports both simple errors (just message) and validation errors (message + field errors).
 //
@@ -16,7 +18,28 @@ type ErrorResponse struct {
 }
 
 func (e *ErrorResponse) Error() string {
-	return e.Message
+	if len(e.Errors) == 0 {
+		return e.Message
+	}
+
+	var s strings.Builder
+	s.WriteString(e.Message)
+	s.WriteString(": ")
+
+	first := true
+	for field, message := range e.Errors {
+		if !first {
+			s.WriteString("; ")
+		}
+
+		first = false
+
+		s.WriteString(field)
+		s.WriteString("=")
+		s.WriteString(message)
+	}
+
+	return s.String()
 }
 
 // AddError adds a field-level error (builder pattern).

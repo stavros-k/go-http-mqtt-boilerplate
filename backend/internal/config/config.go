@@ -38,7 +38,7 @@ const (
 )
 
 const (
-	// Log rotation settings
+	// Log rotation settings.
 	logMaxSize    = 500 // megabytes per log file
 	logMaxBackups = 100 // number of old log files to retain
 	logMaxAge     = 7   // days to retain old log files

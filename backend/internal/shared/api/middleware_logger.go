@@ -33,6 +33,7 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 
 	n, err := rw.ResponseWriter.Write(b)
 	rw.bytesWritten += int64(n)
+
 	return n, err
 }
 
