@@ -9,14 +9,6 @@ import (
 	"http-mqtt-boilerplate/backend/pkg/router"
 )
 
-func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) error {
-	apitypes.RespondJSON(w, r, http.StatusOK, sharedtypes.PingResponse{
-		Message: "Pong", Status: sharedtypes.PingStatusOK,
-	})
-
-	return nil
-}
-
 func (h *Handler) RegisterPing(path string, rb *router.RouteBuilder) {
 	rb.MustGet(path, router.RouteSpec{
 		OperationID: "ping",
@@ -24,7 +16,6 @@ func (h *Handler) RegisterPing(path string, rb *router.RouteBuilder) {
 		Description: "Check if the server is alive",
 		Group:       CoreGroup,
 		RequestType: nil,
-		Handler:     apitypes.ErrorHandler(h.Ping),
 		Responses: apitypes.GenerateResponses(map[int]router.ResponseSpec{
 			200: {
 				Description: "Successful ping response",
@@ -34,23 +25,15 @@ func (h *Handler) RegisterPing(path string, rb *router.RouteBuilder) {
 				},
 			},
 		}),
+		Handler: apitypes.ErrorHandler(func(w http.ResponseWriter, r *http.Request) error {
+			resp := sharedtypes.PingResponse{
+				Message: "Pong", Status: sharedtypes.PingStatusOK,
+			}
+			apitypes.RespondJSON(w, r, http.StatusOK, resp)
+
+			return nil
+		}),
 	})
-}
-
-func (h *Handler) Health(w http.ResponseWriter, r *http.Request) error {
-	status := h.svc.Core.Health(r.Context())
-	resp := cloudtypes.HealthResponse{
-		Database: status.Database,
-	}
-
-	code := http.StatusOK
-	if !status.Database {
-		code = http.StatusServiceUnavailable
-	}
-
-	apitypes.RespondJSON(w, r, code, resp)
-
-	return nil
 }
 
 func (h *Handler) RegisterHealth(path string, rb *router.RouteBuilder) {
@@ -60,7 +43,6 @@ func (h *Handler) RegisterHealth(path string, rb *router.RouteBuilder) {
 		Description: "Check if the server is healthy",
 		Group:       CoreGroup,
 		RequestType: nil,
-		Handler:     apitypes.ErrorHandler(h.Health),
 		Responses: apitypes.GenerateResponses(map[int]router.ResponseSpec{
 			200: {
 				Description: "Successful health response",
@@ -80,6 +62,21 @@ func (h *Handler) RegisterHealth(path string, rb *router.RouteBuilder) {
 				Description: "Internal server error",
 				Type:        sharedtypes.ErrorResponse{},
 			},
+		}),
+		Handler: apitypes.ErrorHandler(func(w http.ResponseWriter, r *http.Request) error {
+			status := h.svc.Core.Health(r.Context())
+			resp := cloudtypes.HealthResponse{
+				Database: status.Database,
+			}
+
+			code := http.StatusOK
+			if !status.Database {
+				code = http.StatusServiceUnavailable
+			}
+
+			apitypes.RespondJSON(w, r, code, resp)
+
+			return nil
 		}),
 	})
 }
